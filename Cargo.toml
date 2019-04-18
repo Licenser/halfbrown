@@ -1,0 +1,11 @@
+[package]
+name = "halfbrown"
+version = "0.1.0"
+authors = ["Heinz N. Gies <heinz@licenser.net>"]
+license = "Apache-2.0/MIT"
+edition = "2018"
+description = "Multi backend HashMap for higher performance on different key space sizes"
+repository = "https://github.com/Licenser/halfbrown"
+
+[dependencies]
+hashbrown = "0.2"
