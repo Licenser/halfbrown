@@ -20,6 +20,8 @@
 
 mod macros;
 mod vecmap;
+#[cfg(feature = "serde")]
+mod serde;
 use core::borrow::Borrow;
 use core::hash::Hash;
 use hashbrown::HashMap as HashBrown;
