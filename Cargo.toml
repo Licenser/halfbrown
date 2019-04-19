@@ -11,5 +11,12 @@ repository = "https://github.com/Licenser/halfbrown"
 hashbrown = "0.2"
 serde = { version = "1", default-features = false,  optional = true }
 
+[dev-dependencies]
+criterion = "0.2"
+
 
 [features]
+
+[[bench]]
+name = "compare"
+harness = false
