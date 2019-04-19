@@ -594,8 +594,8 @@ where
                 if m.len() >= VEC_LIMIT_UPPER {
                     let mut r;
                     *self = match std::mem::replace(self, HashMap::None) {
-                        HashMap::Vec(m) => {
-                            let mut m1: HashBrown<K, V> = m.into_iter().collect();
+                        HashMap::Vec(mut m) => {
+                            let mut m1: HashBrown<K, V> = m.drain().collect();
                             r = m1.insert(k, v);
                             HashMap::Map(m1)
                         }
