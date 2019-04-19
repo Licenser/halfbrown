@@ -105,6 +105,22 @@ where
             HashMap::Vec(VecMap::with_capacity(capacity))
         }
     }
+
+    /// Same as with capacity with the difference that it, despite of the
+    /// requested size always returns a vector. This allows quicker generation
+    /// when used in combination with `insert_nocheck`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use halfbrown::HashMap;
+    /// let mut map: HashMap<&str, i32> = HashMap::vec_with_capacity(128);
+    /// assert!(map.is_vec());
+    /// ```
+    #[inline]
+    pub fn vec_with_capacity(capacity: usize) -> Self {
+            HashMap::Vec(VecMap::with_capacity(capacity))
+    }
 }
 
 impl<K, V> HashMap<K, V>

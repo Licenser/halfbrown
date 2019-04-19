@@ -189,7 +189,18 @@ fn bench(cnt: usize, cap: usize) -> ParameterizedBenchmark<std::vec::Vec<&'stati
         },
         vec![data1],
     )
-    .with_function("hashbrown", move |b, data| {
+        .with_function("halfbrown(nocheck)", move |b, data| {
+            b.iter_batched(
+                || data.clone(),
+                |data| {
+                    let mut m = halfbrown::HashMap::with_capacity(cap);
+                    for e in data {
+                        m.insert_nocheck(e, e);
+                    }
+                },
+                BatchSize::SmallInput,
+            )
+        })    .with_function("hashbrown", move |b, data| {
         b.iter_batched(
             || data.clone(),
             |data| {
@@ -263,7 +274,7 @@ fn insert_33(c: &mut Criterion) {
 }
 
 fn insert_49(c: &mut Criterion) {
-    c.bench("insert(33)", bench(49, 0));
+    c.bench("insert(49)", bench(49, 0));
 }
 
 fn insert_65(c: &mut Criterion) {
