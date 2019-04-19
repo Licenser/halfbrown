@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate criterion;
-
 use criterion::*;
 use halfbrown;
 use hashbrown;
@@ -172,13 +169,6 @@ const NAMES: [&'static str; 162] = [
     "volume_ramp_down",
     "volume_ramp_up",
 ];
-fn fibonacci(n: u64) -> u64 {
-    match n {
-        0 => 1,
-        1 => 1,
-        n => fibonacci(n - 1) + fibonacci(n - 2),
-    }
-}
 
 fn bench(cnt: usize, cap: usize) -> ParameterizedBenchmark<std::vec::Vec<&'static str>>{
     let data1: Vec<&'static str> = NAMES.iter().cloned().take(cnt).collect();
@@ -241,6 +231,10 @@ fn insert_33_capacity(c: &mut Criterion) {
     c.bench("insert(33) with capacity", bench(33, 33));
 }
 
+fn insert_49_capacity(c: &mut Criterion) {
+    c.bench("insert(49) with capacity", bench(49, 49));
+}
+
 fn insert_65_capacity(c: &mut Criterion) {
     c.bench("insert(65) with capacity", bench(65, 65));
 }
@@ -250,7 +244,7 @@ fn insert_129_capacity(c: &mut Criterion) {
 }
 
 
-criterion_group!(capacity, insert_5_capacity, insert_9_capacity, insert_17_capacity, insert_33_capacity, insert_65_capacity, insert_129_capacity);
+criterion_group!(capacity, insert_5_capacity, insert_9_capacity, insert_17_capacity, insert_33_capacity, insert_49_capacity, insert_65_capacity, insert_129_capacity);
 
 fn insert_5(c: &mut Criterion) {
     c.bench("insert(5)", bench(5, 0));
@@ -268,6 +262,10 @@ fn insert_33(c: &mut Criterion) {
     c.bench("insert(33)", bench(33, 0));
 }
 
+fn insert_49(c: &mut Criterion) {
+    c.bench("insert(33)", bench(49, 0));
+}
+
 fn insert_65(c: &mut Criterion) {
     c.bench("insert(65)", bench(65, 0));
 }
@@ -276,6 +274,6 @@ fn insert_129(c: &mut Criterion) {
     c.bench("insert(129)", bench(129, 0));
 }
 
-criterion_group!(alloc, insert_5, insert_9, insert_17, insert_33, insert_65, insert_129);
+criterion_group!(alloc, insert_5, insert_9, insert_17, insert_33, insert_49, insert_65, insert_129);
 
 criterion_main!(capacity, alloc);
