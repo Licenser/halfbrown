@@ -15,12 +15,12 @@ Halfbrown, is a hashmap implementation that uses two backends to optimize for di
 
 ## VecMap
 
-For less then 64 key value pairs it uses a dumb vector based map implementation. This trades the need to iterator through the
+For less then 32 key value pairs it uses a dumb vector based map implementation. This trades the need to iterator through the
 vector for not having to hash strings on lookup or inserts.
 
 ## Hashbrown
 
-For more then 64 elements it upgrades the map to aq hashbrown base map to account for longer itteration times.
+For more then 32 elements it upgrades the map to aq hashbrown base map to account for longer itteration times.
 
 ## License
 

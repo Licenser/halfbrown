@@ -6,12 +6,12 @@
 //! insert and lookup for small numbers of entries
 //! but effective for lager numbers.
 //!
-//! So for smaller maps, we picked 64 entries as a rule
+//! So for smaller maps, we picked 32 entries as a rule
 //! of thumb, we simply store data in a list of tuples.
 //! Looking those up and iterating over them is still
 //! faster then hasing strings on every lookup.
 //!
-//! Once we pass the 64 entires we transition the
+//! Once we pass the 32 entires we transition the
 //! backend to a HashBrown hashmap.
 //!
 //! Note: Most of the documentation is taken from
@@ -31,7 +31,7 @@ use std::ops::Index;
 use vecmap::VecMap;
 
 //const VEC_LOWER_LIMIT: usize = 32;
-const VEC_LIMIT_UPPER: usize = 64;
+const VEC_LIMIT_UPPER: usize = 32;
 
 #[derive(Clone, Debug)]
 pub enum HashMap<K, V>
@@ -901,12 +901,12 @@ mod tests {
     fn scale_up() {
         let mut v = HashMap::new();
         assert!(v.is_vec());
-        for i in 1..65 {
-            // 64 entries
+        for i in 1..33 {
+            // 32 entries
             v.insert(i, i);
             assert!(v.is_vec());
         }
-        v.insert(65, 65);
+        v.insert(33, 33);
         assert!(v.is_map());
     }
 
