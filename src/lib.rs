@@ -670,8 +670,9 @@ where
         }
     }
 
-    #[cfg(test)]
-    fn is_map(&self) -> bool {
+    /// Checks if the current backend is a map, if so returns
+    /// true.
+    pub fn is_map(&self) -> bool {
         match self {
             HashMap::Map(_m) => true,
             HashMap::Vec(_m) => false,
@@ -679,8 +680,9 @@ where
         }
     }
 
-    #[cfg(test)]
-    fn is_vec(&self) -> bool {
+    /// Checks if the current backend is a vector, if so returns
+    /// true.
+    pub fn is_vec(&self) -> bool {
         match self {
             HashMap::Map(_m) => false,
             HashMap::Vec(_m) => true,
