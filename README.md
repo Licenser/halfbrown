@@ -4,10 +4,10 @@
 [circleci.com]: https://circleci.com/gh/Licenser/halfbrown/tree/master
 [Windows Build Status]: https://ci.appveyor.com/api/projects/status/0kf0v6hj5v2gite9?svg=true
 [appveyor.com]: https://ci.appveyor.com/project/Licenser/halfbrown
-[Latest Version]: https://img.shields.io/crates/v/simd-json.svg
-[crates.io]: https://crates.io/crates/simd-json
+[Latest Version]: https://img.shields.io/crates/v/halfbrown.svg
+[crates.io]: https://crates.io/crates/halfbrown
 
-**Hashmap implementation that dynamically switches from a vector based backend to a hashbrown based backend as the number of keys grows **
+**Hashmap implementation that dynamically switches from a vector based backend to a hashbrown based backend as the number of keys grows**
 
 ---
 
