@@ -28,7 +28,7 @@ use hashbrown::HashMap as HashBrown;
 use std::default::Default;
 use std::iter::{FromIterator, IntoIterator};
 use std::ops::Index;
-use vecmap::VecMap;
+use crate::vecmap::VecMap;
 
 //const VEC_LOWER_LIMIT: usize = 32;
 const VEC_LIMIT_UPPER: usize = 32;

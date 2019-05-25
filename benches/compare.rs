@@ -66,11 +66,13 @@ const NAMES: [&'static str; 162] = [
     "Bridget",
     "Mauricio",
     "Marcus",
+    // some more json keys
     "data",
     "name",
     "rows",
     "rows_per_beat",
     "rows_per_measure",
+    // Names again
     "Jeannetta",
     "Vickey",
     "Marco",
@@ -81,6 +83,7 @@ const NAMES: [&'static str; 162] = [
     "Milford",
     "Sandra",
     "Cherie",
+    // Back to keys
     "contributors_enabled",
     "created_at",
     "default_profile",
@@ -121,6 +124,7 @@ const NAMES: [&'static str; 162] = [
     "url",
     "utc_offset",
     "verified",
+    // Names
     "Dulcie",
     "Nancey",
     "Johnson",
@@ -135,6 +139,7 @@ const NAMES: [&'static str; 162] = [
     "Narcisa",
     "Iva",
     "Aleen",
+    // more keys
     "default_filter_cutoff",
     "default_filter_cutoff_enabled",
     "default_filter_mode",
