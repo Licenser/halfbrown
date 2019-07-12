@@ -18,17 +18,20 @@
 //! rusts hashmap.rs and should be considered under
 //! their copyright.
 
+mod entry;
 mod macros;
 #[cfg(feature = "serde")]
 mod serde;
 mod vecmap;
+
+use crate::entry::*;
+use crate::vecmap::VecMap;
 use core::borrow::Borrow;
 use core::hash::Hash;
-use hashbrown::HashMap as HashBrown;
+use hashbrown::{self, HashMap as HashBrown};
 use std::default::Default;
 use std::iter::{FromIterator, IntoIterator};
 use std::ops::Index;
-use crate::vecmap::VecMap;
 
 //const VEC_LOWER_LIMIT: usize = 32;
 const VEC_LIMIT_UPPER: usize = 32;
@@ -119,7 +122,7 @@ where
     /// ```
     #[inline]
     pub fn vec_with_capacity(capacity: usize) -> Self {
-            HashMap::Vec(VecMap::with_capacity(capacity))
+        HashMap::Vec(VecMap::with_capacity(capacity))
     }
 }
 
@@ -144,7 +147,7 @@ where
         match self {
             HashMap::Map(m) => m.capacity(),
             HashMap::Vec(m) => m.capacity(),
-            HashMap::None => unreachable!(),
+            HashMap::None => unimplemented!(),
         }
     }
 
@@ -450,7 +453,6 @@ where
         }
     }
 
-    /* TODO
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
     ///
     /// # Examples
@@ -472,12 +474,12 @@ where
     /// ```
     pub fn entry(&mut self, key: K) -> Entry<K, V> {
         match self {
-            HashMap::Map(m) => m.entry(k),
-            HashMap::Vec(m) => m.entry(v),
-            HashMap::None => unreachable!(),
+            HashMap::Map(m) => m.entry(key).into(),
+            //HashMap::Vec(m) => m.entry(v),
+            //HashMap::None => unreachable!(),
+            _ => unreachable!(),
         }
     }
-    */
 
     /// Returns a reference to the value corresponding to the key.
     ///
