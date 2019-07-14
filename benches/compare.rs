@@ -3,7 +3,7 @@ use halfbrown;
 use hashbrown;
 use std::collections;
 
-const NAMES: [&'static str; 162] = [
+const NAMES: [&str; 162] = [
     // Some data taken from the twitter json
     "contributors",
     "coordinates",
@@ -175,7 +175,7 @@ const NAMES: [&'static str; 162] = [
     "volume_ramp_up",
 ];
 
-fn bench(cnt: usize, cap: usize) -> ParameterizedBenchmark<std::vec::Vec<&'static str>>{
+fn bench(cnt: usize, cap: usize) -> ParameterizedBenchmark<std::vec::Vec<&'static str>> {
     let data1: Vec<&'static str> = NAMES.iter().cloned().take(cnt).collect();
 
     ParameterizedBenchmark::new(
@@ -194,18 +194,19 @@ fn bench(cnt: usize, cap: usize) -> ParameterizedBenchmark<std::vec::Vec<&'stati
         },
         vec![data1],
     )
-        .with_function("halfbrown(nocheck)", move |b, data| {
-            b.iter_batched(
-                || data.clone(),
-                |data| {
-                    let mut m = halfbrown::HashMap::with_capacity(cap);
-                    for e in data {
-                        m.insert_nocheck(e, e);
-                    }
-                },
-                BatchSize::SmallInput,
-            )
-        })    .with_function("hashbrown", move |b, data| {
+    .with_function("halfbrown(nocheck)", move |b, data| {
+        b.iter_batched(
+            || data.clone(),
+            |data| {
+                let mut m = halfbrown::HashMap::with_capacity(cap);
+                for e in data {
+                    m.insert_nocheck(e, e);
+                }
+            },
+            BatchSize::SmallInput,
+        )
+    })
+    .with_function("hashbrown", move |b, data| {
         b.iter_batched(
             || data.clone(),
             |data| {
@@ -259,8 +260,16 @@ fn insert_129_capacity(c: &mut Criterion) {
     c.bench("insert(129) with capacity", bench(129, 128));
 }
 
-
-criterion_group!(capacity, insert_5_capacity, insert_9_capacity, insert_17_capacity, insert_33_capacity, insert_49_capacity, insert_65_capacity, insert_129_capacity);
+criterion_group!(
+    capacity,
+    insert_5_capacity,
+    insert_9_capacity,
+    insert_17_capacity,
+    insert_33_capacity,
+    insert_49_capacity,
+    insert_65_capacity,
+    insert_129_capacity
+);
 
 fn insert_5(c: &mut Criterion) {
     c.bench("insert(5)", bench(5, 0));

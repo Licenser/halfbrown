@@ -2,14 +2,10 @@
 //! rusts hashmap.rs and should be considered under
 //! their copyright.
 
-use crate::vecmap::{self, Entry as VecMapEntry};
-use hashbrown::{
-    self,
-    hash_map::{self, Entry as HashBrownEntry},
-};
-use std::fmt;
-use core::hash::{Hash, BuildHasher};
-
+use super::VecMap;
+use core::hash::Hash;
+use std::fmt::{self, Debug};
+use std::mem;
 
 /////// General
 
@@ -19,15 +15,15 @@ use core::hash::{Hash, BuildHasher};
 ///
 /// [`HashMap`]: struct.HashMap.html
 /// [`entry`]: struct.HashMap.html#method.entry
-pub enum Entry<'a, K, V, S> {
+pub enum Entry<'a, K, V> {
     /// An occupied entry.
-    Occupied(OccupiedEntry<'a, K, V, S>),
+    Occupied(OccupiedEntry<'a, K, V>),
 
     /// A vacant entry.
-    Vacant(VacantEntry<'a, K, V, S>),
+    Vacant(VacantEntry<'a, K, V>),
 }
 
-impl<'a, K, V, S> Entry<'a, K, V, S> {
+impl<'a, K, V> Entry<'a, K, V> {
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
     ///
@@ -48,7 +44,6 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
     pub fn or_insert(self, default: V) -> &'a mut V
     where
         K: Hash,
-        S: BuildHasher,
     {
         match self {
             Entry::Occupied(entry) => entry.into_mut(),
@@ -75,7 +70,6 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V
     where
         K: Hash,
-        S: BuildHasher,
     {
         match self {
             Entry::Occupied(entry) => entry.into_mut(),
@@ -136,25 +130,7 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
     }
 }
 
-impl<'a, K, V, S> From<HashBrownEntry<'a, K, V, S>> for Entry<'a, K, V, S> {
-    fn from(f: HashBrownEntry<'a, K, V, S>) -> Entry<'a, K, V, S> {
-        match f {
-            HashBrownEntry::Occupied(o) => Entry::Occupied(OccupiedEntry::Map(o)),
-            HashBrownEntry::Vacant(o) => Entry::Vacant(VacantEntry::Map(o)),
-        }
-    }
-}
-
-impl<'a, K, V, S> From<VecMapEntry<'a, K, V>> for Entry<'a, K, V, S> {
-    fn from(f: VecMapEntry<'a, K, V>) -> Entry<'a, K, V, S> {
-        match f {
-            VecMapEntry::Occupied(o) => Entry::Occupied(OccupiedEntry::Vec(o)),
-            VecMapEntry::Vacant(o) => Entry::Vacant(VacantEntry::Vec(o)),
-        }
-    }
-}
-
-impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for Entry<'_, K, V, S> {
+impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for Entry<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Entry::Vacant(ref v) => f.debug_tuple("Entry").field(v).finish(),
@@ -166,61 +142,50 @@ impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for Entry<'_, K, V, S> {
 /// A view into an occupied entry in a `HashMap`.
 /// It is part of the [`Entry`] enum.
 ///
-/// [`Entryx`]: enum.Entry.html
-pub enum OccupiedEntry<'a, K, V, S> {
-    Map(hash_map::OccupiedEntry<'a, K, V, S>),
-    Vec(vecmap::OccupiedEntry<'a, K, V>),
+/// [`Entry`]: enum.Entry.html
+pub struct OccupiedEntry<'a, K, V> {
+    idx: usize,
+    key: Option<K>,
+    table: &'a mut VecMap<K, V>,
 }
 
-unsafe impl<K, V, S> Send for OccupiedEntry<'_, K, V, S>
+unsafe impl<K, V> Send for OccupiedEntry<'_, K, V>
 where
     K: Send,
     V: Send,
-    S: Send,
 {
 }
-unsafe impl<K, V, S> Sync for OccupiedEntry<'_, K, V, S>
+unsafe impl<K, V> Sync for OccupiedEntry<'_, K, V>
 where
     K: Sync,
     V: Sync,
-    S: Sync
 {
 }
 
-impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for OccupiedEntry<'_, K, V, S> {
+impl<K: Debug, V: Debug> Debug for OccupiedEntry<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            OccupiedEntry::Map(m) => write!(f, "{:?}", m),
-            OccupiedEntry::Vec(m) => write!(f, "{:?}", m),
-        }
+        f.debug_struct("OccupiedEntry")
+            .field("key", self.key())
+            .field("value", self.get())
+            .finish()
     }
 }
 
-/// A view into a vacant entry in a `HashMap`.
-/// It is part of the [`Entry`] enum.
-///
-/// [`Entry`]: enum.Entry.html
-pub enum VacantEntry<'a, K, V, S> {
-    Map(hashbrown::hash_map::VacantEntry<'a, K, V, S>),
-    Vec(vecmap::VacantEntry<'a, K, V>),
-}
-
-impl<K: fmt::Debug, V, S> fmt::Debug for VacantEntry<'_, K, V, S> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            VacantEntry::Map(m) => write!(f, "{:?}", m),
-            VacantEntry::Vec(m) => write!(f, "{:?}", m),
+impl<'a, K, V> OccupiedEntry<'a, K, V> {
+    pub(crate) fn new(idx: usize, key: K, table: &'a mut VecMap<K, V>) -> Self {
+        Self {
+            idx,
+            key: Some(key),
+            table,
         }
     }
-}
 
-impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// Gets a reference to the key in the entry.
     ///
     /// # Examples
     ///
     /// ```
-    /// use halfbrown::HashMap;
+    /// use hashbrown::HashMap;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// map.entry("poneyland").or_insert(12);
@@ -228,10 +193,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn key(&self) -> &K {
-        match self {
-            OccupiedEntry::Map(m) => m.key(),
-            OccupiedEntry::Vec(m) => m.key(),
-        }
+        unsafe { &self.table.v.get_unchecked(self.idx).0 }
     }
 
     /// Take the ownership of the key and value from the map.
@@ -239,8 +201,8 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// # Examples
     ///
     /// ```
-    /// use halfbrown::HashMap;
-    /// use halfbrown::Entry;
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::Entry;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// map.entry("poneyland").or_insert(12);
@@ -254,10 +216,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn remove_entry(self) -> (K, V) {
-        match self {
-            OccupiedEntry::Map(m) => m.remove_entry(),
-            OccupiedEntry::Vec(m) => m.remove_entry(),
-        }
+        self.table.v.swap_remove(self.idx)
     }
 
     /// Gets a reference to the value in the entry.
@@ -265,8 +224,8 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// # Examples
     ///
     /// ```
-    /// use halfbrown::HashMap;
-    /// use halfbrown::Entry;
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::Entry;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// map.entry("poneyland").or_insert(12);
@@ -277,10 +236,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn get(&self) -> &V {
-        match self {
-            OccupiedEntry::Map(m) => m.get(),
-            OccupiedEntry::Vec(m) => m.get(),
-        }
+        unsafe { &self.table.v.get_unchecked(self.idx).1 }
     }
 
     /// Gets a mutable reference to the value in the entry.
@@ -293,8 +249,8 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// # Examples
     ///
     /// ```
-    /// use halfbrown::HashMap;
-    /// use halfbrown::Entry;
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::Entry;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// map.entry("poneyland").or_insert(12);
@@ -312,10 +268,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn get_mut(&mut self) -> &mut V {
-        match self {
-            OccupiedEntry::Map(m) => m.get_mut(),
-            OccupiedEntry::Vec(m) => m.get_mut(),
-        }
+        unsafe { &mut self.table.v.get_unchecked_mut(self.idx).1 }
     }
 
     /// Converts the OccupiedEntry into a mutable reference to the value in the entry
@@ -328,8 +281,8 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// # Examples
     ///
     /// ```
-    /// use halfbrown::HashMap;
-    /// use halfbrown::Entry;
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::Entry;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// map.entry("poneyland").or_insert(12);
@@ -343,10 +296,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn into_mut(self) -> &'a mut V {
-        match self {
-            OccupiedEntry::Map(m) => m.into_mut(),
-            OccupiedEntry::Vec(m) => m.into_mut(),
-        }
+        unsafe { &mut self.table.v.get_unchecked_mut(self.idx).1 }
     }
 
     /// Sets the value of the entry, and returns the entry's old value.
@@ -354,8 +304,8 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// # Examples
     ///
     /// ```
-    /// use halfbrown::HashMap;
-    /// use halfbrown::Entry;
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::Entry;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// map.entry("poneyland").or_insert(12);
@@ -367,11 +317,10 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// assert_eq!(map["poneyland"], 15);
     /// ```
     #[inline]
-    pub fn insert(&mut self, value: V) -> V {
-        match self {
-            OccupiedEntry::Map(m) => m.insert(value),
-            OccupiedEntry::Vec(m) => m.insert(value),
-        }
+    pub fn insert(&mut self, mut value: V) -> V {
+        let old_value = self.get_mut();
+        mem::swap(&mut value, old_value);
+        value
     }
 
     /// Takes the value out of the entry, and returns it.
@@ -379,8 +328,8 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// # Examples
     ///
     /// ```
-    /// use halfbrown::HashMap;
-    /// use halfbrown::Entry;
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::Entry;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// map.entry("poneyland").or_insert(12);
@@ -393,10 +342,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn remove(self) -> V {
-        match self {
-            OccupiedEntry::Map(m) => m.remove(),
-            OccupiedEntry::Vec(m) => m.remove(),
-        }
+        self.remove_entry().1
     }
 
     /// Replaces the entry, returning the old key and value. The new key in the hash map will be
@@ -421,10 +367,12 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn replace_entry(self, value: V) -> (K, V) {
-        match self {
-            OccupiedEntry::Map(m) => m.replace_entry(value),
-            OccupiedEntry::Vec(m) => m.replace_entry(value),
-        }
+        let entry = unsafe { self.table.v.get_unchecked_mut(self.idx) };
+
+        let old_key = mem::replace(&mut entry.0, self.key.unwrap());
+        let old_value = mem::replace(&mut entry.1, value);
+
+        (old_key, old_value)
     }
 
     /// Replaces the key in the hash map with the key used to create this entry.
@@ -453,31 +401,44 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn replace_key(self) -> K {
-        match self {
-            OccupiedEntry::Map(m) => m.replace_key(),
-            OccupiedEntry::Vec(m) => m.replace_key(),
-        }
+        let entry = unsafe { self.table.v.get_unchecked_mut(self.idx) };
+        mem::replace(&mut entry.0, self.key.unwrap())
     }
 }
 
-impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
+/// A view into a vacant entry in a `HashMap`.
+/// It is part of the [`Entry`] enum.
+///
+/// [`Entry`]: enum.Entry.html
+pub struct VacantEntry<'a, K, V> {
+    key: K,
+    table: &'a mut VecMap<K, V>,
+}
+
+impl<K: Debug, V> Debug for VacantEntry<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("VacantEntry").field(self.key()).finish()
+    }
+}
+
+impl<'a, K, V> VacantEntry<'a, K, V> {
+    pub(crate) fn new(key: K, table: &'a mut VecMap<K, V>) -> Self {
+        Self { key, table }
+    }
     /// Gets a reference to the key that would be used when inserting a value
     /// through the `VacantEntry`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use halfbrown::HashMap;
+    /// use hashbrown::HashMap;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// assert_eq!(map.entry("poneyland").key(), &"poneyland");
     /// ```
     #[inline]
     pub fn key(&self) -> &K {
-        match self {
-            VacantEntry::Map(m) => m.key(),
-            VacantEntry::Vec(m) => m.key(),
-        }
+        &self.key
     }
 
     /// Take ownership of the key.
@@ -485,8 +446,8 @@ impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
     /// # Examples
     ///
     /// ```
-    /// use halfbrown::HashMap;
-    /// use halfbrown::Entry;
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::Entry;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
@@ -496,10 +457,7 @@ impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn into_key(self) -> K {
-        match self {
-            VacantEntry::Map(m) => m.into_key(),
-            VacantEntry::Vec(m) => m.into_key(),
-        }
+        self.key
     }
 
     /// Sets the value of the entry with the VacantEntry's key,
@@ -508,8 +466,8 @@ impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
     /// # Examples
     ///
     /// ```
-    /// use halfbrown::HashMap;
-    /// use halfbrown::Entry;
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::Entry;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
@@ -522,11 +480,9 @@ impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
     pub fn insert(self, value: V) -> &'a mut V
     where
         K: Hash,
-                S: BuildHasher,
     {
-        match self {
-            VacantEntry::Map(m) => m.insert(value),
-            VacantEntry::Vec(m) => m.insert(value),
-        }
+        let i = self.table.v.len();
+        self.table.v.push((self.key, value));
+        unsafe { &mut self.table.v.get_unchecked_mut(i).1 }
     }
 }

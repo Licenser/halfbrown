@@ -51,6 +51,7 @@ macro_rules! hashmap {
     ($($key:expr => $value:expr),*) => {
         {
             let _cap = hashmap!(@count $($key),*);
+            #[allow(clippy::let_and_return)]
             let mut _map = $crate::HashMap::with_capacity(_cap);
             $(
                 let _ = _map.insert($key, $value);

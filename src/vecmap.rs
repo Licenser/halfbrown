@@ -1,6 +1,11 @@
+mod entry;
+mod iter;
+
+pub use self::entry::*;
+pub use self::iter::*;
 use core::borrow::Borrow;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Default, Debug, PartialEq, Clone)]
 pub struct VecMap<K, V> {
     v: Vec<(K, V)>,
 }
@@ -95,6 +100,14 @@ where
         self.v.push((k, v));
     }
 
+    pub fn entry(&mut self, key: K) -> Entry<K, V> {
+        for (idx, (ak, _v)) in self.v.iter().enumerate() {
+            if &key == ak.borrow() {
+                return Entry::Occupied(OccupiedEntry::new(idx, key, self));
+            }
+        }
+        Entry::Vacant(VacantEntry::new(key, self))
+    }
     #[inline]
     pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
     where
@@ -140,14 +153,5 @@ where
     #[inline]
     pub fn clear(&mut self) {
         self.v.clear()
-    }
-}
-impl<K, V> IntoIterator for VecMap<K, V> {
-    type Item = (K, V);
-    type IntoIter = std::vec::IntoIter<(K, V)>;
-
-    #[inline]
-    fn into_iter(self) -> std::vec::IntoIter<(K, V)> {
-        self.v.into_iter()
     }
 }
