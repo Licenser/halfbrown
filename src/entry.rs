@@ -3,13 +3,12 @@
 //! their copyright.
 
 use crate::vecmap::{self, Entry as VecMapEntry};
+use core::hash::{BuildHasher, Hash};
 use hashbrown::{
     self,
     hash_map::{self, Entry as HashBrownEntry},
 };
 use std::fmt;
-use core::hash::{Hash, BuildHasher};
-
 
 /////// General
 
@@ -183,7 +182,7 @@ unsafe impl<K, V, S> Sync for OccupiedEntry<'_, K, V, S>
 where
     K: Sync,
     V: Sync,
-    S: Sync
+    S: Sync,
 {
 }
 
@@ -522,7 +521,7 @@ impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
     pub fn insert(self, value: V) -> &'a mut V
     where
         K: Hash,
-                S: BuildHasher,
+        S: BuildHasher,
     {
         match self {
             VacantEntry::Map(m) => m.insert(value),
