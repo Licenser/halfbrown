@@ -18,34 +18,41 @@
 //! rusts hashmap.rs and should be considered under
 //! their copyright.
 
+mod entry;
+mod iter;
 mod macros;
 #[cfg(feature = "serde")]
 mod serde;
-mod vecmap;
-use core::borrow::Borrow;
-use core::hash::Hash;
-use hashbrown::HashMap as HashBrown;
-use std::default::Default;
-use std::iter::{FromIterator, IntoIterator};
-use std::ops::Index;
+pub mod vecmap;
+
+pub use crate::entry::*;
+use crate::iter::*;
 use crate::vecmap::VecMap;
+use core::borrow::Borrow;
+use core::hash::{BuildHasher, Hash};
+pub use hashbrown::hash_map::DefaultHashBuilder;
+use hashbrown::{self, HashMap as HashBrown};
+use std::default::Default;
+use std::ops::Index;
 
 //const VEC_LOWER_LIMIT: usize = 32;
 const VEC_LIMIT_UPPER: usize = 32;
 
 #[derive(Clone, Debug)]
-pub enum HashMap<K, V>
+pub enum HashMap<K, V, S = DefaultHashBuilder>
 where
+    S: BuildHasher + Default,
     K: Eq + Hash,
 {
-    Map(HashBrown<K, V>),
+    Map(HashBrown<K, V, S>),
     Vec(VecMap<K, V>),
     None,
 }
 
-impl<K, V> Default for HashMap<K, V>
+impl<K, V, S> Default for HashMap<K, V, S>
 where
     K: Eq + Hash,
+    S: BuildHasher + Default,
 {
     #[inline]
     fn default() -> Self {
@@ -53,20 +60,7 @@ where
     }
 }
 
-impl<K, Q: ?Sized, V> Index<&Q> for HashMap<K, V>
-where
-    K: Eq + Hash + Borrow<Q>,
-    Q: Eq + Hash,
-{
-    type Output = V;
-
-    #[inline]
-    fn index(&self, key: &Q) -> &V {
-        self.get(key).expect("no entry found for key")
-    }
-}
-
-impl<K, V> HashMap<K, V>
+impl<K, V> HashMap<K, V, DefaultHashBuilder>
 where
     K: Eq + Hash,
 {
@@ -100,7 +94,10 @@ where
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
         if capacity > VEC_LIMIT_UPPER {
-            HashMap::Map(HashBrown::with_capacity(capacity))
+            HashMap::Map(HashBrown::with_capacity_and_hasher(
+                capacity,
+                DefaultHashBuilder::default(),
+            ))
         } else {
             HashMap::Vec(VecMap::with_capacity(capacity))
         }
@@ -119,14 +116,41 @@ where
     /// ```
     #[inline]
     pub fn vec_with_capacity(capacity: usize) -> Self {
-            HashMap::Vec(VecMap::with_capacity(capacity))
+        HashMap::Vec(VecMap::with_capacity(capacity))
     }
 }
 
-impl<K, V> HashMap<K, V>
+impl<K, V, S> HashMap<K, V, S>
 where
     K: Eq + Hash,
+    S: BuildHasher + Default,
 {
+    /// Creates an empty `HashMap` with the specified capacity, using `hash_builder`
+    /// to hash the keys.
+    ///
+    /// The hash map will be able to hold at least `capacity` elements without
+    /// reallocating. If `capacity` is 0, the hash map will not allocate.
+    ///
+    /// Warning: `hash_builder` is normally randomly generated, and
+    /// is designed to allow HashMaps to be resistant to attacks that
+    /// cause many collisions and very poor performance. Setting it
+    /// manually using this function can expose a DoS attack vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::DefaultHashBuilder;
+    ///
+    /// let s = DefaultHashBuilder::default();
+    /// let mut map = HashMap::with_capacity_and_hasher(10, s);
+    /// map.insert(1, 2);
+    /// ```
+    #[inline]
+    pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
+        HashMap::Map(HashBrown::with_capacity_and_hasher(capacity, hash_builder))
+    }
+
     /// Returns the number of elements the map can hold without reallocating.
     ///
     /// This number is a lower bound; the `HashMap<K, V>` might be able to hold
@@ -144,7 +168,7 @@ where
         match self {
             HashMap::Map(m) => m.capacity(),
             HashMap::Vec(m) => m.capacity(),
-            HashMap::None => unreachable!(),
+            HashMap::None => unimplemented!(),
         }
     }
 
@@ -367,10 +391,10 @@ where
     }
 }
 
-impl<K, V> HashMap<K, V>
+impl<K, V, S> HashMap<K, V, S>
 where
     K: Eq + Hash,
-    // Hasher
+    S: BuildHasher + Default,
 {
     /// Reserves capacity for at least `additional` more elements to be inserted
     /// in the `HashMap`. The collection may reserve more space to avoid
@@ -450,7 +474,6 @@ where
         }
     }
 
-    /* TODO
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
     ///
     /// # Examples
@@ -470,14 +493,13 @@ where
     /// assert_eq!(letters[&'u'], 1);
     /// assert_eq!(letters.get(&'y'), None);
     /// ```
-    pub fn entry(&mut self, key: K) -> Entry<K, V> {
+    pub fn entry(&mut self, key: K) -> Entry<K, V, S> {
         match self {
-            HashMap::Map(m) => m.entry(k),
-            HashMap::Vec(m) => m.entry(v),
+            HashMap::Map(m) => m.entry(key).into(),
+            HashMap::Vec(m) => m.entry(key).into(),
             HashMap::None => unreachable!(),
         }
     }
-    */
 
     /// Returns a reference to the value corresponding to the key.
     ///
@@ -608,10 +630,10 @@ where
             HashMap::Map(m) => m.insert(k, v),
             HashMap::Vec(m) => {
                 if m.len() >= VEC_LIMIT_UPPER {
-                    let mut r;
+                    let r;
                     *self = match std::mem::replace(self, HashMap::None) {
                         HashMap::Vec(mut m) => {
-                            let mut m1: HashBrown<K, V> = m.drain().collect();
+                            let mut m1: HashBrown<K, V, S> = m.drain().collect();
                             r = m1.insert(k, v);
                             HashMap::Map(m1)
                         }
@@ -691,116 +713,31 @@ where
     }
 }
 
-pub enum Iter<'a, K, V> {
-    Map(hashbrown::hash_map::Iter<'a, K, V>),
-    Vec(std::slice::Iter<'a, (K, V)>),
-}
-
-impl<'a, K, V> Iterator for Iter<'a, K, V> {
-    type Item = (&'a K, &'a V);
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            Iter::Map(m) => m.next(),
-            Iter::Vec(m) => {
-                if let Some((k, v)) = m.next() {
-                    Some((&k, &v))
-                } else {
-                    None
-                }
-            }
-        }
-    }
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        match self {
-            Iter::Map(m) => m.size_hint(),
-            Iter::Vec(m) => m.size_hint(),
-        }
-    }
-}
-
-pub enum IntoIter<K, V> {
-    Map(hashbrown::hash_map::IntoIter<K, V>),
-    Vec(std::vec::IntoIter<(K, V)>),
-}
-impl<K, V> IntoIter<K, V> {
-    pub fn len(&self) -> usize {
-        match self {
-            IntoIter::Map(i) => i.len(),
-            IntoIter::Vec(i) => i.len(),
-        }
-    }
-}
-
-impl<K, V> Iterator for IntoIter<K, V> {
-    type Item = (K, V);
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            IntoIter::Map(m) => m.next(),
-            IntoIter::Vec(m) => m.next(),
-        }
-    }
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        match self {
-            IntoIter::Map(m) => m.size_hint(),
-            IntoIter::Vec(m) => m.size_hint(),
-        }
-    }
-}
-
-impl<K, V> IntoIterator for HashMap<K, V>
+impl<K, Q: ?Sized, V, S> Index<&Q> for HashMap<K, V, S>
 where
-    K: Eq + Hash,
+    K: Eq + Hash + Borrow<Q>,
+    Q: Eq + Hash,
+    S: BuildHasher + Default,
 {
-    type Item = (K, V);
-    type IntoIter = IntoIter<K, V>;
+    type Output = V;
 
+    /// Returns a reference to the value corresponding to the supplied key.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the key is not present in the `HashMap`.
     #[inline]
-    fn into_iter(self) -> IntoIter<K, V> {
-        match self {
-            HashMap::Map(m) => IntoIter::Map(m.into_iter()),
-            HashMap::Vec(m) => IntoIter::Vec(m.into_iter()),
-            HashMap::None => unreachable!(),
-        }
-    }
-}
-
-impl<'a, K, V> IntoIterator for &'a HashMap<K, V>
-where
-    K: Eq + Hash,
-{
-    type Item = (&'a K, &'a V);
-    type IntoIter = Iter<'a, K, V>;
-
-    #[inline]
-    fn into_iter(self) -> Iter<'a, K, V> {
-        self.iter()
-    }
-}
-
-impl<K, V> FromIterator<(K, V)> for HashMap<K, V>
-where
-    K: Eq + Hash,
-{
-    #[inline]
-    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
-        let iter = iter.into_iter();
-        let mut map = Self::with_capacity(iter.size_hint().0);
-        iter.for_each(|(k, v)| {
-            map.insert(k, v);
-        });
-        map
+    fn index(&self, key: &Q) -> &V {
+        self.get(key).expect("no entry found for key")
     }
 }
 
 // Taken from hashbrown
-impl<K, V> PartialEq for HashMap<K, V>
+impl<K, V, S> PartialEq for HashMap<K, V, S>
 where
     K: Eq + Hash,
     V: PartialEq,
+    S: BuildHasher + Default,
 {
     fn eq(&self, other: &Self) -> bool {
         if self.len() != other.len() {
@@ -809,31 +746,6 @@ where
 
         self.iter()
             .all(|(key, value)| other.get(key).map_or(false, |v| *value == *v))
-    }
-}
-
-//#[derive(Clone)]
-pub enum IterMut<'a, K, V> {
-    Map(hashbrown::hash_map::IterMut<'a, K, V>),
-    Vec(std::slice::IterMut<'a, (K, V)>),
-}
-
-impl<'a, K, V> Iterator for IterMut<'a, K, V> {
-    type Item = (&'a K, &'a mut V);
-
-    #[inline]
-    fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
-        match self {
-            IterMut::Map(m) => m.next(),
-            IterMut::Vec(m) => m.next().map(|(k, v)| (k as &K, v)),
-        }
-    }
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        match self {
-            IterMut::Map(m) => m.size_hint(),
-            IterMut::Vec(m) => m.size_hint(),
-        }
     }
 }
 
