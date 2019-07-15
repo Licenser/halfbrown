@@ -1,6 +1,6 @@
 [package]
 name = "halfbrown"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Heinz N. Gies <heinz@licenser.net>"]
 license = "Apache-2.0/MIT"
 edition = "2018"

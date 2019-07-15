@@ -26,7 +26,7 @@ mod serde;
 pub mod vecmap;
 
 pub use crate::entry::*;
-use crate::iter::*;
+pub use crate::iter::*;
 use crate::vecmap::VecMap;
 use core::borrow::Borrow;
 use core::hash::{BuildHasher, Hash};
