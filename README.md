@@ -2,6 +2,7 @@
 
 [Build Status]: https://circleci.com/gh/Licenser/halfbrown/tree/master.svg?style=svg
 [circleci.com]: https://circleci.com/gh/Licenser/halfbrown/tree/master
+[![Build Status](https://cloud.drone.io/api/badges/Licenser/halfbrown/status.svg)](https://cloud.drone.io/Licenser/halfbrown)
 [Windows Build Status]: https://ci.appveyor.com/api/projects/status/0kf0v6hj5v2gite9?svg=true
 [appveyor.com]: https://ci.appveyor.com/project/Licenser/halfbrown
 [Latest Version]: https://img.shields.io/crates/v/halfbrown.svg
