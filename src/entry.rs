@@ -138,8 +138,8 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
 impl<'a, K, V, S> From<HashBrownEntry<'a, K, V, S>> for Entry<'a, K, V, S> {
     fn from(f: HashBrownEntry<'a, K, V, S>) -> Entry<'a, K, V, S> {
         match f {
-            HashBrownEntry::Occupied(o) => Entry::Occupied(OccupiedEntry::Map(o)),
-            HashBrownEntry::Vacant(o) => Entry::Vacant(VacantEntry::Map(o)),
+            HashBrownEntry::Occupied(o) => Entry::Occupied(OccupiedEntry(OccupiedEntryInt::Map(o))),
+            HashBrownEntry::Vacant(o) => Entry::Vacant(VacantEntry(VacantEntryInt::Map(o))),
         }
     }
 }
@@ -147,8 +147,8 @@ impl<'a, K, V, S> From<HashBrownEntry<'a, K, V, S>> for Entry<'a, K, V, S> {
 impl<'a, K, V, S> From<VecMapEntry<'a, K, V>> for Entry<'a, K, V, S> {
     fn from(f: VecMapEntry<'a, K, V>) -> Entry<'a, K, V, S> {
         match f {
-            VecMapEntry::Occupied(o) => Entry::Occupied(OccupiedEntry::Vec(o)),
-            VecMapEntry::Vacant(o) => Entry::Vacant(VacantEntry::Vec(o)),
+            VecMapEntry::Occupied(o) => Entry::Occupied(OccupiedEntry(OccupiedEntryInt::Vec(o))),
+            VecMapEntry::Vacant(o) => Entry::Vacant(VacantEntry(VacantEntryInt::Vec(o))),
         }
     }
 }
@@ -166,10 +166,10 @@ impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for Entry<'_, K, V, S> {
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entryx`]: enum.Entry.html
-pub enum OccupiedEntry<'a, K, V, S> {
-    /// A based map implementation
+pub struct OccupiedEntry<'a, K, V, S>(OccupiedEntryInt<'a, K, V, S>);
+
+enum OccupiedEntryInt<'a, K, V, S> {
     Map(hash_map::OccupiedEntry<'a, K, V, S>),
-    /// A based vec implementation
     Vec(vecmap::OccupiedEntry<'a, K, V>),
 }
 
@@ -190,9 +190,9 @@ where
 
 impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for OccupiedEntry<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            OccupiedEntry::Map(m) => write!(f, "{:?}", m),
-            OccupiedEntry::Vec(m) => write!(f, "{:?}", m),
+        match &self.0 {
+            OccupiedEntryInt::Map(m) => write!(f, "{:?}", m),
+            OccupiedEntryInt::Vec(m) => write!(f, "{:?}", m),
         }
     }
 }
@@ -201,7 +201,9 @@ impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for OccupiedEntry<'_, K, V, S> 
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
-pub enum VacantEntry<'a, K, V, S> {
+pub struct VacantEntry<'a, K, V, S>(VacantEntryInt<'a, K, V, S>);
+
+enum VacantEntryInt<'a, K, V, S> {
     /// a map based implementation
     Map(hashbrown::hash_map::VacantEntry<'a, K, V, S>),
     /// a vec based implementation
@@ -210,9 +212,9 @@ pub enum VacantEntry<'a, K, V, S> {
 
 impl<K: fmt::Debug, V, S> fmt::Debug for VacantEntry<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            VacantEntry::Map(m) => write!(f, "{:?}", m),
-            VacantEntry::Vec(m) => write!(f, "{:?}", m),
+        match &self.0 {
+            VacantEntryInt::Map(m) => write!(f, "{:?}", m),
+            VacantEntryInt::Vec(m) => write!(f, "{:?}", m),
         }
     }
 }
@@ -231,9 +233,9 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn key(&self) -> &K {
-        match self {
-            OccupiedEntry::Map(m) => m.key(),
-            OccupiedEntry::Vec(m) => m.key(),
+        match &self.0 {
+            OccupiedEntryInt::Map(m) => m.key(),
+            OccupiedEntryInt::Vec(m) => m.key(),
         }
     }
 
@@ -257,9 +259,9 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn remove_entry(self) -> (K, V) {
-        match self {
-            OccupiedEntry::Map(m) => m.remove_entry(),
-            OccupiedEntry::Vec(m) => m.remove_entry(),
+        match self.0 {
+            OccupiedEntryInt::Map(m) => m.remove_entry(),
+            OccupiedEntryInt::Vec(m) => m.remove_entry(),
         }
     }
 
@@ -280,9 +282,9 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn get(&self) -> &V {
-        match self {
-            OccupiedEntry::Map(m) => m.get(),
-            OccupiedEntry::Vec(m) => m.get(),
+        match &self.0 {
+            OccupiedEntryInt::Map(m) => m.get(),
+            OccupiedEntryInt::Vec(m) => m.get(),
         }
     }
 
@@ -315,9 +317,9 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn get_mut(&mut self) -> &mut V {
-        match self {
-            OccupiedEntry::Map(m) => m.get_mut(),
-            OccupiedEntry::Vec(m) => m.get_mut(),
+        match &mut self.0 {
+            OccupiedEntryInt::Map(m) => m.get_mut(),
+            OccupiedEntryInt::Vec(m) => m.get_mut(),
         }
     }
 
@@ -346,9 +348,9 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn into_mut(self) -> &'a mut V {
-        match self {
-            OccupiedEntry::Map(m) => m.into_mut(),
-            OccupiedEntry::Vec(m) => m.into_mut(),
+        match self.0 {
+            OccupiedEntryInt::Map(m) => m.into_mut(),
+            OccupiedEntryInt::Vec(m) => m.into_mut(),
         }
     }
 
@@ -371,9 +373,9 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn insert(&mut self, value: V) -> V {
-        match self {
-            OccupiedEntry::Map(m) => m.insert(value),
-            OccupiedEntry::Vec(m) => m.insert(value),
+        match &mut self.0 {
+            OccupiedEntryInt::Map(m) => m.insert(value),
+            OccupiedEntryInt::Vec(m) => m.insert(value),
         }
     }
 
@@ -396,9 +398,9 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn remove(self) -> V {
-        match self {
-            OccupiedEntry::Map(m) => m.remove(),
-            OccupiedEntry::Vec(m) => m.remove(),
+        match self.0 {
+            OccupiedEntryInt::Map(m) => m.remove(),
+            OccupiedEntryInt::Vec(m) => m.remove(),
         }
     }
 
@@ -424,9 +426,9 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn replace_entry(self, value: V) -> (K, V) {
-        match self {
-            OccupiedEntry::Map(m) => m.replace_entry(value),
-            OccupiedEntry::Vec(m) => m.replace_entry(value),
+        match self.0 {
+            OccupiedEntryInt::Map(m) => m.replace_entry(value),
+            OccupiedEntryInt::Vec(m) => m.replace_entry(value),
         }
     }
 
@@ -456,9 +458,9 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn replace_key(self) -> K {
-        match self {
-            OccupiedEntry::Map(m) => m.replace_key(),
-            OccupiedEntry::Vec(m) => m.replace_key(),
+        match self.0 {
+            OccupiedEntryInt::Map(m) => m.replace_key(),
+            OccupiedEntryInt::Vec(m) => m.replace_key(),
         }
     }
 }
@@ -477,9 +479,9 @@ impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn key(&self) -> &K {
-        match self {
-            VacantEntry::Map(m) => m.key(),
-            VacantEntry::Vec(m) => m.key(),
+        match &self.0 {
+            VacantEntryInt::Map(m) => m.key(),
+            VacantEntryInt::Vec(m) => m.key(),
         }
     }
 
@@ -499,9 +501,9 @@ impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
     /// ```
     #[inline]
     pub fn into_key(self) -> K {
-        match self {
-            VacantEntry::Map(m) => m.into_key(),
-            VacantEntry::Vec(m) => m.into_key(),
+        match self.0 {
+            VacantEntryInt::Map(m) => m.into_key(),
+            VacantEntryInt::Vec(m) => m.into_key(),
         }
     }
 
@@ -527,9 +529,9 @@ impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
         K: Hash,
         S: BuildHasher,
     {
-        match self {
-            VacantEntry::Map(m) => m.insert(value),
-            VacantEntry::Vec(m) => m.insert(value),
+        match self.0 {
+            VacantEntryInt::Map(m) => m.insert(value),
+            VacantEntryInt::Vec(m) => m.insert(value),
         }
     }
 }
