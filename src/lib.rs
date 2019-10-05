@@ -48,6 +48,7 @@ use core::hash::{BuildHasher, Hash};
 pub use hashbrown::hash_map::DefaultHashBuilder;
 use hashbrown::{self, HashMap as HashBrown};
 use std::default::Default;
+use std::fmt::{self, Debug};
 use std::ops::Index;
 
 //const VEC_LOWER_LIMIT: usize = 32;
@@ -55,10 +56,21 @@ const VEC_LIMIT_UPPER: usize = 32;
 
 /// `HashMap` implementation that alternates between a vector
 /// and a hashmap to improve performance for low key counts.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub struct HashMap<K: Eq + Hash, V, S: BuildHasher + Default = DefaultHashBuilder>(
     HashMapInt<K, V, S>,
 );
+
+impl<K, V, S> Debug for HashMap<K, V, S>
+where
+    K: Debug + Eq + Hash,
+    V: Debug,
+    S: BuildHasher + Default,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_map().entries(self.iter()).finish()
+    }
+}
 
 #[derive(Clone, Debug)]
 enum HashMapInt<K, V, S = DefaultHashBuilder>
