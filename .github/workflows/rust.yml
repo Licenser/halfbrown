@@ -1,0 +1,33 @@
+name: Rust (tests)
+
+on: [push]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        rust:
+          - stable
+          - nightly
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macOS-latest
+        rustflags:
+          - '-C target-cpu=native'
+          - '-C target-cpu=native -C target-feature=-avx2'
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ matrix.rust }}
+        override: true
+    - name: Build
+      env:
+        RUSTFLAGS: ${{ matrix.rustflags }}
+      run: cargo build --verbose
+    - name: Run tests
+      env:
+        RUSTFLAGS: ${{ matrix.rustflags }}
+      run: cargo test --verbose

@@ -1,7 +1,7 @@
 #![warn(missing_docs)]
 #![warn(unused_results)]
 
-//! Taken from: https://docs.rs/maplit/1/
+//! Taken from: <https://docs.rs/maplit/1/>
 //! Macros for halfbrown literals.
 //!
 //! ```norun
@@ -26,7 +26,7 @@
 //! here at the moment.
 
 #[macro_export]
-/// Create a **HashMap** from a list of key-value pairs
+/// Create a **`HashMap`** from a list of key-value pairs
 ///
 /// ## Example
 ///

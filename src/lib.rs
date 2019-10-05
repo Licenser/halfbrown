@@ -12,18 +12,33 @@
 //! faster then hasing strings on every lookup.
 //!
 //! Once we pass the 32 entires we transition the
-//! backend to a HashBrown hashmap.
+//! backend to a `HashMap`.
 //!
 //! Note: Most of the documentation is taken from
 //! rusts hashmap.rs and should be considered under
 //! their copyright.
+
+#![forbid(warnings)]
+#![warn(unused_extern_crates)]
+#![cfg_attr(
+    feature = "cargo-clippy",
+    deny(
+        clippy::all,
+        clippy::result_unwrap_used,
+        clippy::unnecessary_unwrap,
+        clippy::pedantic
+    ),
+    // We might want to revisit inline_always
+    allow(clippy::module_name_repetitions, clippy::inline_always)
+)]
+#![deny(missing_docs)]
 
 mod entry;
 mod iter;
 mod macros;
 #[cfg(feature = "serde")]
 mod serde;
-pub mod vecmap;
+mod vecmap;
 
 pub use crate::entry::*;
 pub use crate::iter::*;
@@ -38,8 +53,15 @@ use std::ops::Index;
 //const VEC_LOWER_LIMIT: usize = 32;
 const VEC_LIMIT_UPPER: usize = 32;
 
+/// `HashMap` implementation that alternates between a vector
+/// and a hashmap to improve performance for low key counts.
+#[derive(Clone, Debug, Default)]
+pub struct HashMap<K: Eq + Hash, V, S: BuildHasher + Default = DefaultHashBuilder>(
+    HashMapInt<K, V, S>,
+);
+
 #[derive(Clone, Debug)]
-pub enum HashMap<K, V, S = DefaultHashBuilder>
+enum HashMapInt<K, V, S = DefaultHashBuilder>
 where
     S: BuildHasher + Default,
     K: Eq + Hash,
@@ -49,14 +71,14 @@ where
     None,
 }
 
-impl<K, V, S> Default for HashMap<K, V, S>
+impl<K, V, S> Default for HashMapInt<K, V, S>
 where
     K: Eq + Hash,
     S: BuildHasher + Default,
 {
     #[inline]
     fn default() -> Self {
-        HashMap::Vec(VecMap::new())
+        Self::Vec(VecMap::new())
     }
 }
 
@@ -77,7 +99,7 @@ where
     /// ```
     #[inline]
     pub fn new() -> Self {
-        HashMap::Vec(VecMap::new())
+        Self(HashMapInt::Vec(VecMap::new()))
     }
 
     /// Creates an empty `HashMap` with the specified capacity.
@@ -93,14 +115,14 @@ where
     /// ```
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
-        if capacity > VEC_LIMIT_UPPER {
-            HashMap::Map(HashBrown::with_capacity_and_hasher(
+        Self(if capacity > VEC_LIMIT_UPPER {
+            HashMapInt::Map(HashBrown::with_capacity_and_hasher(
                 capacity,
                 DefaultHashBuilder::default(),
             ))
         } else {
-            HashMap::Vec(VecMap::with_capacity(capacity))
-        }
+            HashMapInt::Vec(VecMap::with_capacity(capacity))
+        })
     }
 
     /// Same as with capacity with the difference that it, despite of the
@@ -116,7 +138,7 @@ where
     /// ```
     #[inline]
     pub fn vec_with_capacity(capacity: usize) -> Self {
-        HashMap::Vec(VecMap::with_capacity(capacity))
+        Self(HashMapInt::Vec(VecMap::with_capacity(capacity)))
     }
 }
 
@@ -148,7 +170,10 @@ where
     /// ```
     #[inline]
     pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
-        HashMap::Map(HashBrown::with_capacity_and_hasher(capacity, hash_builder))
+        Self(HashMapInt::Map(HashBrown::with_capacity_and_hasher(
+            capacity,
+            hash_builder,
+        )))
     }
 
     /// Returns the number of elements the map can hold without reallocating.
@@ -165,10 +190,10 @@ where
     /// ```
     #[inline]
     pub fn capacity(&self) -> usize {
-        match self {
-            HashMap::Map(m) => m.capacity(),
-            HashMap::Vec(m) => m.capacity(),
-            HashMap::None => unimplemented!(),
+        match &self.0 {
+            HashMapInt::Map(m) => m.capacity(),
+            HashMapInt::Vec(m) => m.capacity(),
+            HashMapInt::None => unimplemented!(),
         }
     }
 
@@ -260,10 +285,10 @@ where
     /// }
     /// ```
     pub fn iter(&self) -> Iter<'_, K, V> {
-        match self {
-            HashMap::Map(m) => Iter::Map(m.iter()),
-            HashMap::Vec(m) => Iter::Vec(m.iter()),
-            HashMap::None => unreachable!(),
+        match &self.0 {
+            HashMapInt::Map(m) => IterInt::Map(m.iter()).into(),
+            HashMapInt::Vec(m) => IterInt::Vec(m.iter()).into(),
+            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -291,10 +316,10 @@ where
     /// }
     /// ```
     pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
-        match self {
-            HashMap::Map(m) => IterMut::Map(m.iter_mut()),
-            HashMap::Vec(m) => IterMut::Vec(m.iter_mut()),
-            HashMap::None => unreachable!(),
+        match &mut self.0 {
+            HashMapInt::Map(m) => IterMutInt::Map(m.iter_mut()).into(),
+            HashMapInt::Vec(m) => IterMutInt::Vec(m.iter_mut()).into(),
+            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -312,10 +337,10 @@ where
     /// ```
     #[inline]
     pub fn len(&self) -> usize {
-        match self {
-            HashMap::Map(m) => m.len(),
-            HashMap::Vec(m) => m.len(),
-            HashMap::None => unreachable!(),
+        match &self.0 {
+            HashMapInt::Map(m) => m.len(),
+            HashMapInt::Vec(m) => m.len(),
+            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -333,10 +358,10 @@ where
     /// ```
     #[inline]
     pub fn is_empty(&self) -> bool {
-        match self {
-            HashMap::Map(m) => m.is_empty(),
-            HashMap::Vec(m) => m.is_empty(),
-            HashMap::None => unreachable!(),
+        match &self.0 {
+            HashMapInt::Map(m) => m.is_empty(),
+            HashMapInt::Vec(m) => m.is_empty(),
+            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -361,10 +386,10 @@ where
     /// ```
     #[inline]
     pub fn drain(&mut self) -> Drain<K, V> {
-        match self {
-            HashMap::Map(m) => Drain::Map(m.drain()),
-            HashMap::Vec(m) => Drain::Vec(m.drain()),
-            HashMap::None => unreachable!(),
+        match &mut self.0 {
+            HashMapInt::Map(m) => Drain(DrainInt::Map(m.drain())),
+            HashMapInt::Vec(m) => Drain(DrainInt::Vec(m.drain())),
+            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -383,10 +408,10 @@ where
     /// ```
     #[inline]
     pub fn clear(&mut self) {
-        match self {
-            HashMap::Map(m) => m.clear(),
-            HashMap::Vec(m) => m.clear(),
-            HashMap::None => unreachable!(),
+        match &mut self.0 {
+            HashMapInt::Map(m) => m.clear(),
+            HashMapInt::Vec(m) => m.clear(),
+            HashMapInt::None => unreachable!(),
         }
     }
 }
@@ -415,10 +440,10 @@ where
     /// ```
     #[inline]
     pub fn reserve(&mut self, additional: usize) {
-        match self {
-            HashMap::Map(m) => m.reserve(additional),
-            HashMap::Vec(m) => m.reserve(additional),
-            HashMap::None => unreachable!(),
+        match &mut self.0 {
+            HashMapInt::Map(m) => m.reserve(additional),
+            HashMapInt::Vec(m) => m.reserve(additional),
+            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -442,7 +467,7 @@ where
     /// ```
     #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
-        match self {
+        match &self.0 {
             HashMap::Map(m) => m.try_reserve(additional),
             HashMap::Vec(m) => m.try_reserve(additional),
             HashMap::None => unreachable!(),
@@ -467,10 +492,10 @@ where
     /// assert!(map.capacity() >= 2);
     /// ```
     pub fn shrink_to_fit(&mut self) {
-        match self {
-            HashMap::Map(m) => m.shrink_to_fit(),
-            HashMap::Vec(m) => m.shrink_to_fit(),
-            HashMap::None => unreachable!(),
+        match &mut self.0 {
+            HashMapInt::Map(m) => m.shrink_to_fit(),
+            HashMapInt::Vec(m) => m.shrink_to_fit(),
+            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -494,10 +519,10 @@ where
     /// assert_eq!(letters.get(&'y'), None);
     /// ```
     pub fn entry(&mut self, key: K) -> Entry<K, V, S> {
-        match self {
-            HashMap::Map(m) => m.entry(key).into(),
-            HashMap::Vec(m) => m.entry(key).into(),
-            HashMap::None => unreachable!(),
+        match &mut self.0 {
+            HashMapInt::Map(m) => m.entry(key).into(),
+            HashMapInt::Vec(m) => m.entry(key).into(),
+            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -526,10 +551,10 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        match self {
-            HashMap::Map(m) => m.get(k),
-            HashMap::Vec(m) => m.get(k),
-            HashMap::None => unreachable!(),
+        match &self.0 {
+            HashMapInt::Map(m) => m.get(k),
+            HashMapInt::Vec(m) => m.get(k),
+            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -557,10 +582,10 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        match self {
-            HashMap::Map(m) => m.contains_key(k),
-            HashMap::Vec(m) => m.contains_key(k),
-            HashMap::None => unreachable!(),
+        match &self.0 {
+            HashMapInt::Map(m) => m.contains_key(k),
+            HashMapInt::Vec(m) => m.contains_key(k),
+            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -592,10 +617,10 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        match self {
-            HashMap::Map(m) => m.get_mut(k),
-            HashMap::Vec(m) => m.get_mut(k),
-            HashMap::None => unreachable!(),
+        match &mut self.0 {
+            HashMapInt::Map(m) => m.get_mut(k),
+            HashMapInt::Vec(m) => m.get_mut(k),
+            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -626,16 +651,16 @@ where
     /// ```
     #[inline]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
-        match self {
-            HashMap::Map(m) => m.insert(k, v),
-            HashMap::Vec(m) => {
+        match &mut self.0 {
+            HashMapInt::Map(m) => m.insert(k, v),
+            HashMapInt::Vec(m) => {
                 if m.len() >= VEC_LIMIT_UPPER {
                     let r;
-                    *self = match std::mem::replace(self, HashMap::None) {
-                        HashMap::Vec(mut m) => {
+                    self.0 = match std::mem::replace(&mut self.0, HashMapInt::None) {
+                        HashMapInt::Vec(mut m) => {
                             let mut m1: HashBrown<K, V, S> = m.drain().collect();
                             r = m1.insert(k, v);
-                            HashMap::Map(m1)
+                            HashMapInt::Map(m1)
                         }
                         _ => unreachable!(),
                     };
@@ -644,7 +669,7 @@ where
                     m.insert(k, v)
                 }
             }
-            HashMap::None => unreachable!(),
+            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -674,41 +699,44 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        match self {
-            HashMap::Map(m) => m.remove(k),
-            HashMap::Vec(m) => m.remove(k),
-            HashMap::None => unreachable!(),
+        match &mut self.0 {
+            HashMapInt::Map(m) => m.remove(k),
+            HashMapInt::Vec(m) => m.remove(k),
+            HashMapInt::None => unreachable!(),
         }
     }
 
+    /// Inserts element, this ignores check in the vector
+    /// map if keys are present - it's a fast way to build
+    /// a new map when uniqueness is known ahead of time.
     #[inline]
     pub fn insert_nocheck(&mut self, k: K, v: V) {
-        match self {
-            HashMap::Map(m) => {
+        match &mut self.0 {
+            HashMapInt::Map(m) => {
                 m.insert(k, v);
             }
-            HashMap::Vec(m) => m.insert_nocheck(k, v),
-            HashMap::None => unreachable!(),
+            HashMapInt::Vec(m) => m.insert_nocheck(k, v),
+            HashMapInt::None => unreachable!(),
         }
     }
 
     /// Checks if the current backend is a map, if so returns
     /// true.
     pub fn is_map(&self) -> bool {
-        match self {
-            HashMap::Map(_m) => true,
-            HashMap::Vec(_m) => false,
-            HashMap::None => unreachable!(),
+        match &self.0 {
+            HashMapInt::Map(_m) => true,
+            HashMapInt::Vec(_m) => false,
+            HashMapInt::None => unreachable!(),
         }
     }
 
     /// Checks if the current backend is a vector, if so returns
     /// true.
     pub fn is_vec(&self) -> bool {
-        match self {
-            HashMap::Map(_m) => false,
-            HashMap::Vec(_m) => true,
-            HashMap::None => unreachable!(),
+        match &self.0 {
+            HashMapInt::Map(_m) => false,
+            HashMapInt::Vec(_m) => true,
+            HashMapInt::None => unreachable!(),
         }
     }
 }
@@ -750,6 +778,7 @@ where
 }
 
 //#[derive(Clone)]
+/// Iterator over the keys
 pub struct Keys<'a, K, V> {
     inner: Iter<'a, K, V>,
 }
@@ -768,6 +797,7 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
 }
 
 //#[derive(Clone)]
+/// Iterator over the values
 pub struct Values<'a, K, V> {
     inner: Iter<'a, K, V>,
 }
@@ -785,6 +815,7 @@ impl<'a, K, V> Iterator for Values<'a, K, V> {
 }
 
 //#[derive(Clone)]
+/// Mutable iterator over the values
 pub struct ValuesMut<'a, K, V> {
     inner: IterMut<'a, K, V>,
 }
@@ -802,7 +833,10 @@ impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
     }
 }
 
-pub enum Drain<'a, K, V> {
+/// Drains the map
+pub struct Drain<'a, K, V>(DrainInt<'a, K, V>);
+
+enum DrainInt<'a, K, V> {
     Map(hashbrown::hash_map::Drain<'a, K, V>),
     Vec(std::vec::Drain<'a, (K, V)>),
 }
@@ -811,16 +845,16 @@ impl<'a, K, V> Iterator for Drain<'a, K, V> {
     type Item = (K, V);
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            Drain::Map(m) => m.next(),
-            Drain::Vec(m) => m.next(),
+        match &mut self.0 {
+            DrainInt::Map(m) => m.next(),
+            DrainInt::Vec(m) => m.next(),
         }
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        match self {
-            Drain::Map(m) => m.size_hint(),
-            Drain::Vec(m) => m.size_hint(),
+        match &self.0 {
+            DrainInt::Map(m) => m.size_hint(),
+            DrainInt::Vec(m) => m.size_hint(),
         }
     }
 }
@@ -861,5 +895,4 @@ mod tests {
         assert_eq!(v.get(&2), None);
         assert_eq!(v.get(&3), Some(&3));
     }
-
 }

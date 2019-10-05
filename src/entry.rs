@@ -167,7 +167,9 @@ impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for Entry<'_, K, V, S> {
 ///
 /// [`Entryx`]: enum.Entry.html
 pub enum OccupiedEntry<'a, K, V, S> {
+    /// A based map implementation
     Map(hash_map::OccupiedEntry<'a, K, V, S>),
+    /// A based vec implementation
     Vec(vecmap::OccupiedEntry<'a, K, V>),
 }
 
@@ -200,7 +202,9 @@ impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for OccupiedEntry<'_, K, V, S> 
 ///
 /// [`Entry`]: enum.Entry.html
 pub enum VacantEntry<'a, K, V, S> {
+    /// a map based implementation
     Map(hashbrown::hash_map::VacantEntry<'a, K, V, S>),
+    /// a vec based implementation
     Vec(vecmap::VacantEntry<'a, K, V>),
 }
 

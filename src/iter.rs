@@ -1,9 +1,17 @@
-use crate::HashMap;
+use super::{HashMap, HashMapInt};
 use core::hash::{BuildHasher, Hash};
 use hashbrown;
 use std::iter::{FromIterator, IntoIterator};
 
-pub enum Iter<'a, K, V> {
+/// Iterator over the key value pairs of a Halfbrown map
+pub struct Iter<'a, K, V>(IterInt<'a, K, V>);
+
+impl<'a, K, V> From<IterInt<'a, K, V>> for Iter<'a, K, V> {
+    fn from(i: IterInt<'a, K, V>) -> Self {
+        Self(i)
+    }
+}
+pub(crate) enum IterInt<'a, K, V> {
     Map(hashbrown::hash_map::Iter<'a, K, V>),
     Vec(std::slice::Iter<'a, (K, V)>),
 }
@@ -12,9 +20,9 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
     type Item = (&'a K, &'a V);
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            Iter::Map(m) => m.next(),
-            Iter::Vec(m) => {
+        match &mut self.0 {
+            IterInt::Map(m) => m.next(),
+            IterInt::Vec(m) => {
                 if let Some((k, v)) = m.next() {
                     Some((&k, &v))
                 } else {
@@ -25,23 +33,30 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        match self {
-            Iter::Map(m) => m.size_hint(),
-            Iter::Vec(m) => m.size_hint(),
+        match &self.0 {
+            IterInt::Map(m) => m.size_hint(),
+            IterInt::Vec(m) => m.size_hint(),
         }
     }
 }
 
-pub enum IntoIter<K, V> {
+/// Into iterator for a Halfbrown map
+pub struct IntoIter<K, V>(IntoIterInt<K, V>);
+enum IntoIterInt<K, V> {
     Map(hashbrown::hash_map::IntoIter<K, V>),
     Vec(std::vec::IntoIter<(K, V)>),
 }
 impl<K, V> IntoIter<K, V> {
+    /// The length of this iterator
     pub fn len(&self) -> usize {
-        match self {
-            IntoIter::Map(i) => i.len(),
-            IntoIter::Vec(i) => i.len(),
+        match &self.0 {
+            IntoIterInt::Map(i) => i.len(),
+            IntoIterInt::Vec(i) => i.len(),
         }
+    }
+    /// If this iteratoris empty
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
@@ -49,16 +64,16 @@ impl<K, V> Iterator for IntoIter<K, V> {
     type Item = (K, V);
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            IntoIter::Map(m) => m.next(),
-            IntoIter::Vec(m) => m.next(),
+        match &mut self.0 {
+            IntoIterInt::Map(m) => m.next(),
+            IntoIterInt::Vec(m) => m.next(),
         }
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        match self {
-            IntoIter::Map(m) => m.size_hint(),
-            IntoIter::Vec(m) => m.size_hint(),
+        match &self.0 {
+            IntoIterInt::Map(m) => m.size_hint(),
+            IntoIterInt::Vec(m) => m.size_hint(),
         }
     }
 }
@@ -73,10 +88,10 @@ where
 
     #[inline]
     fn into_iter(self) -> IntoIter<K, V> {
-        match self {
-            HashMap::Map(m) => IntoIter::Map(m.into_iter()),
-            HashMap::Vec(m) => IntoIter::Vec(m.into_iter()),
-            HashMap::None => unreachable!(),
+        match self.0 {
+            HashMapInt::Map(m) => IntoIter(IntoIterInt::Map(m.into_iter())),
+            HashMapInt::Vec(m) => IntoIter(IntoIterInt::Vec(m.into_iter())),
+            HashMapInt::None => unreachable!(),
         }
     }
 }
@@ -111,8 +126,16 @@ where
     }
 }
 
-//#[derive(Clone)]
-pub enum IterMut<'a, K, V> {
+/// Mutable iterator over the key value pairs
+pub struct IterMut<'a, K, V>(IterMutInt<'a, K, V>);
+
+impl<'a, K, V> From<IterMutInt<'a, K, V>> for IterMut<'a, K, V> {
+    fn from(i: IterMutInt<'a, K, V>) -> Self {
+        Self(i)
+    }
+}
+
+pub(crate) enum IterMutInt<'a, K, V> {
     Map(hashbrown::hash_map::IterMut<'a, K, V>),
     Vec(std::slice::IterMut<'a, (K, V)>),
 }
@@ -122,16 +145,16 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
 
     #[inline]
     fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
-        match self {
-            IterMut::Map(m) => m.next(),
-            IterMut::Vec(m) => m.next().map(|(k, v)| (k as &K, v)),
+        match &mut self.0 {
+            IterMutInt::Map(m) => m.next(),
+            IterMutInt::Vec(m) => m.next().map(|(k, v)| (k as &K, v)),
         }
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        match self {
-            IterMut::Map(m) => m.size_hint(),
-            IterMut::Vec(m) => m.size_hint(),
+        match &self.0 {
+            IterMutInt::Map(m) => m.size_hint(),
+            IterMutInt::Vec(m) => m.size_hint(),
         }
     }
 }
