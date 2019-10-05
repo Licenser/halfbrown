@@ -1,6 +1,6 @@
 [package]
 name = "halfbrown"
-version = "0.1.6"
+version = "0.1.7"
 authors = ["Heinz N. Gies <heinz@licenser.net>"]
 license = "Apache-2.0/MIT"
 edition = "2018"
@@ -8,7 +8,7 @@ description = "Multi backend HashMap for higher performance on different key spa
 repository = "https://github.com/Licenser/halfbrown"
 
 [dependencies]
-hashbrown = "0.5"
+hashbrown = "0.6"
 serde = { version = "1", default-features = false,  optional = true }
 
 [dev-dependencies]
