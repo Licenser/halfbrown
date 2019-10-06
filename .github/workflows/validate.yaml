@@ -30,9 +30,9 @@ jobs:
           toolchain: nightly
           override: true
       - name: install tarpaulin
-        run: cargo install cargo-tarpaulin -f
+        run: cargo install cargo-tarpaulin -f --version 0.8.7
       - name: run tarpaulin
-        run: cargo tarpaulin --out Xml
+        run: cargo tarpaulin --out Xml 
       - uses: codecov/codecov-action@v1.0.2
         with:
           token: ${{secrets.CODECOV_TOKEN}}

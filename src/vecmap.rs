@@ -17,17 +17,10 @@ where
     fn eq(&self, other: &VecMap<K2, V2>) -> bool {
         if self.len() != other.len() {
             return false;
-        };
-        for (k1, v1) in &self.v {
-            if let Some(v2) = other.get(k1.borrow()) {
-                if v1 != v2.borrow() {
-                    return false;
-                }
-            } else {
-                return false;
-            }
         }
-        true
+
+        self.iter()
+            .all(|(key, value)| other.get(key).map_or(false, |v| value == v.borrow()))
     }
 }
 
