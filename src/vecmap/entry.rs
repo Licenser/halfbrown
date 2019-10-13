@@ -146,7 +146,7 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for Entry<'_, K, V> {
 pub struct OccupiedEntry<'a, K, V> {
     idx: usize,
     key: Option<K>,
-    table: &'a mut VecMap<K, V>,
+    map: &'a mut VecMap<K, V>,
 }
 
 unsafe impl<K, V> Send for OccupiedEntry<'_, K, V>
@@ -172,11 +172,11 @@ impl<K: Debug, V: Debug> Debug for OccupiedEntry<'_, K, V> {
 }
 
 impl<'a, K, V> OccupiedEntry<'a, K, V> {
-    pub(crate) fn new(idx: usize, key: K, table: &'a mut VecMap<K, V>) -> Self {
+    pub(crate) fn new(idx: usize, key: K, map: &'a mut VecMap<K, V>) -> Self {
         Self {
             idx,
             key: Some(key),
-            table,
+            map,
         }
     }
 
@@ -193,7 +193,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[inline]
     pub fn key(&self) -> &K {
-        unsafe { &self.table.v.get_unchecked(self.idx).0 }
+        unsafe { &self.map.v.get_unchecked(self.idx).0 }
     }
 
     /// Take the ownership of the key and value from the map.
@@ -216,7 +216,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[inline]
     pub fn remove_entry(self) -> (K, V) {
-        self.table.v.swap_remove(self.idx)
+        unsafe { self.map.remove_idx(self.idx) }
     }
 
     /// Gets a reference to the value in the entry.
@@ -236,7 +236,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[inline]
     pub fn get(&self) -> &V {
-        unsafe { &self.table.v.get_unchecked(self.idx).1 }
+        unsafe { &self.map.v.get_unchecked(self.idx).1 }
     }
 
     /// Gets a mutable reference to the value in the entry.
@@ -268,7 +268,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[inline]
     pub fn get_mut(&mut self) -> &mut V {
-        unsafe { &mut self.table.v.get_unchecked_mut(self.idx).1 }
+        unsafe { &mut self.map.v.get_unchecked_mut(self.idx).1 }
     }
 
     /// Converts the OccupiedEntry into a mutable reference to the value in the entry
@@ -296,7 +296,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[inline]
     pub fn into_mut(self) -> &'a mut V {
-        unsafe { &mut self.table.v.get_unchecked_mut(self.idx).1 }
+        unsafe { &mut self.map.v.get_unchecked_mut(self.idx).1 }
     }
 
     /// Sets the value of the entry, and returns the entry's old value.
@@ -367,7 +367,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[inline]
     pub fn replace_entry(self, value: V) -> (K, V) {
-        let entry = unsafe { self.table.v.get_unchecked_mut(self.idx) };
+        let entry = unsafe { self.map.v.get_unchecked_mut(self.idx) };
 
         let old_key = mem::replace(&mut entry.0, self.key.unwrap());
         let old_value = mem::replace(&mut entry.1, value);
@@ -401,7 +401,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[inline]
     pub fn replace_key(self) -> K {
-        let entry = unsafe { self.table.v.get_unchecked_mut(self.idx) };
+        let entry = unsafe { self.map.v.get_unchecked_mut(self.idx) };
         mem::replace(&mut entry.0, self.key.unwrap())
     }
 }
@@ -412,7 +412,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
 /// [`Entry`]: enum.Entry.html
 pub struct VacantEntry<'a, K, V> {
     key: K,
-    table: &'a mut VecMap<K, V>,
+    map: &'a mut VecMap<K, V>,
 }
 
 impl<K: Debug, V> Debug for VacantEntry<'_, K, V> {
@@ -422,8 +422,8 @@ impl<K: Debug, V> Debug for VacantEntry<'_, K, V> {
 }
 
 impl<'a, K, V> VacantEntry<'a, K, V> {
-    pub(crate) fn new(key: K, table: &'a mut VecMap<K, V>) -> Self {
-        Self { key, table }
+    pub(crate) fn new(key: K, map: &'a mut VecMap<K, V>) -> Self {
+        Self { key, map }
     }
     /// Gets a reference to the key that would be used when inserting a value
     /// through the `VacantEntry`.
@@ -481,8 +481,7 @@ impl<'a, K, V> VacantEntry<'a, K, V> {
     where
         K: Hash,
     {
-        let i = self.table.v.len();
-        self.table.v.push((self.key, value));
-        unsafe { &mut self.table.v.get_unchecked_mut(i).1 }
+        let i = self.map.insert_idx(self.key, value);
+        unsafe { &mut self.map.v.get_unchecked_mut(i).1 }
     }
 }
