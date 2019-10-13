@@ -1,8 +1,12 @@
+///! A vector based map data structure, mostly for internal use
 mod entry;
 mod iter;
+mod raw_entry;
 
 pub(crate) use self::entry::*;
+pub(crate) use self::raw_entry::*;
 use std::borrow::Borrow;
+
 #[derive(Default, Debug, Clone)]
 pub(crate) struct VecMap<K, V> {
     v: Vec<(K, V)>,
@@ -52,7 +56,7 @@ where
                 return Some(v);
             }
         }
-        self.v.push((k, v));
+        self.insert_idx(k, v);
         None
     }
 
@@ -66,8 +70,9 @@ where
         while i != self.v.len() {
             let (ak, _) = unsafe { self.v.get_unchecked(i) };
             if k == ak.borrow() {
-                let (_, v) = self.v.swap_remove(i);
-                return Some(v);
+                unsafe {
+                    return Some(self.remove_idx(i).1);
+                }
             }
             i += 1;
         }
@@ -167,5 +172,84 @@ where
     #[inline]
     pub(crate) fn clear(&mut self) {
         self.v.clear()
+    }
+}
+
+impl<K, V> VecMap<K, V> {
+    /// Creates a raw entry builder for the HashMap.
+    ///
+    /// Raw entries provide the lowest level of control for searching and
+    /// manipulating a map. They must be manually initialized with a hash and
+    /// then manually searched. After this, insertions into a vacant entry
+    /// still require an owned key to be provided.
+    ///
+    /// Raw entries are useful for such exotic situations as:
+    ///
+    /// * Hash memoization
+    /// * Deferring the creation of an owned key until it is known to be required
+    /// * Using a search key that doesn't work with the Borrow trait
+    /// * Using custom comparison logic without newtype wrappers
+    ///
+    /// Because raw entries provide much more low-level control, it's much easier
+    /// to put the HashMap into an inconsistent state which, while memory-safe,
+    /// will cause the map to produce seemingly random results. Higher-level and
+    /// more foolproof APIs like `entry` should be preferred when possible.
+    ///
+    /// In particular, the hash used to initialized the raw entry must still be
+    /// consistent with the hash of the key that is ultimately stored in the entry.
+    /// This is because implementations of HashMap may need to recompute hashes
+    /// when resizing, at which point only the keys are available.
+    ///
+    /// Raw entries give mutable access to the keys. This must not be used
+    /// to modify how the key would compare or hash, as the map will not re-evaluate
+    /// where the key should go, meaning the keys may become "lost" if their
+    /// location does not reflect their state. For instance, if you change a key
+    /// so that the map now contains keys which compare equal, search may start
+    /// acting erratically, with two keys randomly masking each other. Implementations
+    /// are free to assume this doesn't happen (within the limits of memory-safety).
+    #[inline]
+    pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<'_, K, V> {
+        RawEntryBuilderMut { map: self }
+    }
+
+    /// Creates a raw immutable entry builder for the HashMap.
+    ///
+    /// Raw entries provide the lowest level of control for searching and
+    /// manipulating a map. They must be manually initialized with a hash and
+    /// then manually searched.
+    ///
+    /// This is useful for
+    /// * Hash memoization
+    /// * Using a search key that doesn't work with the Borrow trait
+    /// * Using custom comparison logic without newtype wrappers
+    ///
+    /// Unless you are in such a situation, higher-level and more foolproof APIs like
+    /// `get` should be preferred.
+    ///
+    /// Immutable raw entries have very limited use; you might instead want `raw_entry_mut`.
+    #[inline]
+    pub fn raw_entry(&self) -> RawEntryBuilder<'_, K, V> {
+        RawEntryBuilder { map: self }
+    }
+}
+impl<K, V> VecMap<K, V> {
+    /// Removes an element from a given position
+    #[inline]
+    unsafe fn remove_idx(&mut self, idx: usize) -> (K, V) {
+        self.v.swap_remove(idx)
+    }
+
+    /// inserts a non existing element and returns it's position
+    #[inline]
+    fn insert_idx(&mut self, k: K, v: V) -> usize {
+        let pos = self.v.len();
+        self.v.push((k, v));
+        pos
+    }
+    /// inserts a non existing element and returns it's position
+    #[inline]
+    unsafe fn get_mut_idx(&mut self, idx: usize) -> (&mut K, &mut V) {
+        let r = self.v.get_unchecked_mut(idx);
+        (&mut r.0, &mut r.1)
     }
 }

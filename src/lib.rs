@@ -36,12 +36,14 @@
 mod entry;
 mod iter;
 mod macros;
+mod raw_entry;
 #[cfg(feature = "serde")]
 mod serde;
 mod vecmap;
 
 pub use crate::entry::*;
 pub use crate::iter::*;
+pub use crate::raw_entry::*;
 use crate::vecmap::VecMap;
 use core::borrow::Borrow;
 use core::hash::{BuildHasher, Hash};
@@ -769,6 +771,76 @@ where
     #[inline]
     fn index(&self, key: &Q) -> &V {
         self.get(key).expect("no entry found for key")
+    }
+}
+
+impl<K, V, S> HashMap<K, V, S>
+where
+    S: BuildHasher + Default,
+    K: Eq + Hash,
+{
+    /// Creates a raw entry builder for the HashMap.
+    ///
+    /// Raw entries provide the lowest level of control for searching and
+    /// manipulating a map. They must be manually initialized with a hash and
+    /// then manually searched. After this, insertions into a vacant entry
+    /// still require an owned key to be provided.
+    ///
+    /// Raw entries are useful for such exotic situations as:
+    ///
+    /// * Hash memoization
+    /// * Deferring the creation of an owned key until it is known to be required
+    /// * Using a search key that doesn't work with the Borrow trait
+    /// * Using custom comparison logic without newtype wrappers
+    ///
+    /// Because raw entries provide much more low-level control, it's much easier
+    /// to put the HashMap into an inconsistent state which, while memory-safe,
+    /// will cause the map to produce seemingly random results. Higher-level and
+    /// more foolproof APIs like `entry` should be preferred when possible.
+    ///
+    /// In particular, the hash used to initialized the raw entry must still be
+    /// consistent with the hash of the key that is ultimately stored in the entry.
+    /// This is because implementations of HashMap may need to recompute hashes
+    /// when resizing, at which point only the keys are available.
+    ///
+    /// Raw entries give mutable access to the keys. This must not be used
+    /// to modify how the key would compare or hash, as the map will not re-evaluate
+    /// where the key should go, meaning the keys may become "lost" if their
+    /// location does not reflect their state. For instance, if you change a key
+    /// so that the map now contains keys which compare equal, search may start
+    /// acting erratically, with two keys randomly masking each other. Implementations
+    /// are free to assume this doesn't happen (within the limits of memory-safety).
+    #[inline]
+    pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<'_, K, V, S> {
+        match &mut self.0 {
+            HashMapInt::Vec(m) => RawEntryBuilderMut::from(m.raw_entry_mut()),
+            HashMapInt::Map(m) => RawEntryBuilderMut::from(m.raw_entry_mut()),
+            HashMapInt::None => unreachable!(),
+        }
+    }
+
+    /// Creates a raw immutable entry builder for the HashMap.
+    ///
+    /// Raw entries provide the lowest level of control for searching and
+    /// manipulating a map. They must be manually initialized with a hash and
+    /// then manually searched.
+    ///
+    /// This is useful for
+    /// * Hash memoization
+    /// * Using a search key that doesn't work with the Borrow trait
+    /// * Using custom comparison logic without newtype wrappers
+    ///
+    /// Unless you are in such a situation, higher-level and more foolproof APIs like
+    /// `get` should be preferred.
+    ///
+    /// Immutable raw entries have very limited use; you might instead want `raw_entry_mut`.
+    #[inline]
+    pub fn raw_entry(&self) -> RawEntryBuilder<'_, K, V, S> {
+        match &self.0 {
+            HashMapInt::Vec(m) => RawEntryBuilder::from(m.raw_entry()),
+            HashMapInt::Map(m) => RawEntryBuilder::from(m.raw_entry()),
+            HashMapInt::None => unreachable!(),
+        }
     }
 }
 
