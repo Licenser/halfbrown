@@ -58,7 +58,7 @@ pub use fxhash::FxBuildHasher as DefaultHashBuilder;
 pub use hashbrown::hash_map::DefaultHashBuilder;
 
 /// Maximum nymber of elements before the representaiton is swapped from
-/// Vec to HashMap
+/// Vec to `HashMap`
 pub const VEC_LIMIT_UPPER: usize = 32;
 
 /// `HashMap` implementation that alternates between a vector
