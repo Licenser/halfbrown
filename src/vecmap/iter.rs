@@ -1,6 +1,6 @@
 use super::VecMap;
 
-impl<K, V> IntoIterator for VecMap<K, V> {
+impl<K, V, S> IntoIterator for VecMap<K, V, S> {
     type Item = (K, V);
     type IntoIter = std::vec::IntoIter<(K, V)>;
 

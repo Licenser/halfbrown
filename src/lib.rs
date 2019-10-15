@@ -47,59 +47,61 @@ pub use crate::raw_entry::*;
 use crate::vecmap::VecMap;
 use core::borrow::Borrow;
 use core::hash::{BuildHasher, Hash};
-pub use hashbrown::hash_map::DefaultHashBuilder;
 use hashbrown::{self, HashMap as HashBrown};
 use std::default::Default;
 use std::fmt::{self, Debug};
 use std::ops::Index;
 
-//const VEC_LOWER_LIMIT: usize = 32;
-const VEC_LIMIT_UPPER: usize = 32;
+#[cfg(feature = "fxhash")]
+pub use fxhash::FxBuildHasher as DefaultHashBuilder;
+#[cfg(not(feature = "fxhash"))]
+pub use hashbrown::hash_map::DefaultHashBuilder;
+
+/// Maximum nymber of elements before the representaiton is swapped from
+/// Vec to HashMap
+pub const VEC_LIMIT_UPPER: usize = 32;
 
 /// `HashMap` implementation that alternates between a vector
 /// and a hashmap to improve performance for low key counts.
-#[derive(Clone, Default)]
-pub struct HashMap<K: Eq + Hash, V, S: BuildHasher + Default = DefaultHashBuilder>(
-    HashMapInt<K, V, S>,
-);
+#[derive(Clone)]
+pub struct HashMap<K, V, S = DefaultHashBuilder>(HashMapInt<K, V, S>);
+
+impl<K: Default, V: Default> Default for HashMap<K, V, DefaultHashBuilder> {
+    #[inline]
+    fn default() -> Self {
+        Self(HashMapInt::default())
+    }
+}
 
 impl<K, V, S> Debug for HashMap<K, V, S>
 where
-    K: Debug + Eq + Hash,
+    K: Debug,
     V: Debug,
-    S: BuildHasher + Default,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_map().entries(self.iter()).finish()
     }
 }
 
-#[derive(Clone, Debug)]
-enum HashMapInt<K, V, S = DefaultHashBuilder>
-where
-    S: BuildHasher + Default,
-    K: Eq + Hash,
-{
+#[derive(Clone)]
+enum HashMapInt<K, V, S = DefaultHashBuilder> {
     Map(HashBrown<K, V, S>),
-    Vec(VecMap<K, V>),
+    Vec(VecMap<K, V, S>),
     None,
 }
 
-impl<K, V, S> Default for HashMapInt<K, V, S>
+impl<K, V> Default for HashMapInt<K, V, DefaultHashBuilder>
 where
-    K: Eq + Hash,
-    S: BuildHasher + Default,
+    K: Default,
+    V: Default,
 {
     #[inline]
     fn default() -> Self {
-        Self::Vec(VecMap::new())
+        Self::Vec(VecMap::default())
     }
 }
 
-impl<K, V> HashMap<K, V, DefaultHashBuilder>
-where
-    K: Eq + Hash,
-{
+impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// Creates an empty `HashMap`.
     ///
     /// The hash map is initially created with a capacity of 0, so it will not allocate until it
@@ -115,7 +117,6 @@ where
     pub fn new() -> Self {
         Self(HashMapInt::Vec(VecMap::new()))
     }
-
     /// Creates an empty `HashMap` with the specified capacity.
     ///
     /// The hash map will be able to hold at least `capacity` elements without
@@ -138,7 +139,6 @@ where
             HashMapInt::Vec(VecMap::with_capacity(capacity))
         })
     }
-
     /// Same as with capacity with the difference that it, despite of the
     /// requested size always returns a vector. This allows quicker generation
     /// when used in combination with `insert_nocheck`.
@@ -156,11 +156,32 @@ where
     }
 }
 
-impl<K, V, S> HashMap<K, V, S>
-where
-    K: Eq + Hash,
-    S: BuildHasher + Default,
-{
+impl<K, V, S> HashMap<K, V, S> {
+    /// Creates an empty `HashMap` which will use the given hash builder to hash
+    /// keys.
+    ///
+    /// The created map has the default initial capacity.
+    ///
+    /// Warning: `hash_builder` is normally randomly generated, and
+    /// is designed to allow HashMaps to be resistant to attacks that
+    /// cause many collisions and very poor performance. Setting it
+    /// manually using this function can expose a DoS attack vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::DefaultHashBuilder;
+    ///
+    /// let s = DefaultHashBuilder::default();
+    /// let mut map = HashMap::with_hasher(s);
+    /// map.insert(1, 2);
+    /// ```
+    #[inline]
+    pub fn with_hasher(hash_builder: S) -> Self {
+        Self(HashMapInt::Map(HashBrown::with_hasher(hash_builder)))
+    }
+
     /// Creates an empty `HashMap` with the specified capacity, using `hash_builder`
     /// to hash the keys.
     ///
@@ -188,6 +209,28 @@ where
             capacity,
             hash_builder,
         )))
+    }
+
+    /// Returns a reference to the map's [`BuildHasher`].
+    ///
+    /// [`BuildHasher`]: https://doc.rust-lang.org/std/hash/trait.BuildHasher.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::DefaultHashBuilder;
+    ///
+    /// let hasher = DefaultHashBuilder::default();
+    /// let map: HashMap<i32, i32> = HashMap::with_hasher(hasher);
+    /// let hasher: &DefaultHashBuilder = map.hasher();
+    /// ```
+    pub fn hasher(&self) -> &S {
+        match &self.0 {
+            HashMapInt::Map(m) => m.hasher(),
+            HashMapInt::Vec(m) => m.hasher(),
+            HashMapInt::None => unreachable!(),
+        }
     }
 
     /// Returns the number of elements the map can hold without reallocating.
@@ -433,7 +476,7 @@ where
 impl<K, V, S> HashMap<K, V, S>
 where
     K: Eq + Hash,
-    S: BuildHasher + Default,
+    S: BuildHasher,
 {
     /// Reserves capacity for at least `additional` more elements to be inserted
     /// in the `HashMap`. The collection may reserve more space to avoid
@@ -460,7 +503,6 @@ where
             HashMapInt::None => unreachable!(),
         }
     }
-
     /*
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
     /// in the given `HashMap<K,V>`. The collection may reserve more space to avoid
@@ -479,16 +521,15 @@ where
     /// let mut map: HashMap<&str, isize> = HashMap::new();
     /// map.try_reserve(10).expect("why is the test harness OOMing on 10 bytes?");
     /// ```
-    #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
+    #[inline]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
-        match &self.0 {
-            HashMap::Map(m) => m.try_reserve(additional),
-            HashMap::Vec(m) => m.try_reserve(additional),
-            HashMap::None => unreachable!(),
+        match &mut self.0 {
+            HashMapInt::Map(m) => m.try_reserve(additional),
+            HashMapInt::Vec(m) => m.try_reserve(additional),
+            HashMapInt::None => unreachable!(),
         }
     }
-     */
-
+    */
     /// Shrinks the capacity of the map as much as possible. It will drop
     /// down as much as possible while maintaining the internal rules
     /// and possibly leaving some space in accordance with the resize policy.
@@ -664,7 +705,10 @@ where
     /// assert_eq!(map[&37], "c");
     /// ```
     #[inline]
-    pub fn insert(&mut self, k: K, v: V) -> Option<V> {
+    pub fn insert(&mut self, k: K, v: V) -> Option<V>
+    where
+        S: Default,
+    {
         match &mut self.0 {
             HashMapInt::Map(m) => m.insert(k, v),
             HashMapInt::Vec(m) => {
@@ -759,7 +803,7 @@ impl<K, Q: ?Sized, V, S> Index<&Q> for HashMap<K, V, S>
 where
     K: Eq + Hash + Borrow<Q>,
     Q: Eq + Hash,
-    S: BuildHasher + Default,
+    S: BuildHasher,
 {
     type Output = V;
 
@@ -776,7 +820,7 @@ where
 
 impl<K, V, S> HashMap<K, V, S>
 where
-    S: BuildHasher + Default,
+    S: BuildHasher,
     K: Eq + Hash,
 {
     /// Creates a raw entry builder for the HashMap.
@@ -844,14 +888,13 @@ where
     }
 }
 
-// Taken from hashbrown
-impl<K, V, S> PartialEq for HashMap<K, V, S>
+impl<K, V, S, S1> PartialEq<HashMap<K, V, S1>> for HashMap<K, V, S>
 where
     K: Eq + Hash,
     V: PartialEq,
-    S: BuildHasher + Default,
+    S1: BuildHasher,
 {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, other: &HashMap<K, V, S1>) -> bool {
         if self.len() != other.len() {
             return false;
         }

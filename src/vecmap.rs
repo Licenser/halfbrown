@@ -5,12 +5,25 @@ mod raw_entry;
 
 pub(crate) use self::entry::*;
 pub(crate) use self::raw_entry::*;
+use crate::DefaultHashBuilder;
 use std::borrow::Borrow;
 
-#[derive(Default, Debug, Clone)]
-pub(crate) struct VecMap<K, V> {
+#[derive(Debug, Clone)]
+pub(crate) struct VecMap<K, V, S = DefaultHashBuilder> {
     v: Vec<(K, V)>,
+    hash_builder: S,
 }
+
+impl<K, V> Default for VecMap<K, V, DefaultHashBuilder> {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            v: Vec::new(),
+            hash_builder: DefaultHashBuilder::default(),
+        }
+    }
+}
+
 impl<K1, V1, K2, V2> PartialEq<VecMap<K2, V2>> for VecMap<K1, V1>
 where
     K1: Eq,
@@ -28,55 +41,25 @@ where
     }
 }
 
-impl<K, V> VecMap<K, V>
-where
-    K: Eq,
-{
+impl<K, V> VecMap<K, V, DefaultHashBuilder> {
     #[inline]
     pub(crate) fn new() -> Self {
-        Self { v: Vec::new() }
+        Self::default()
     }
 
     #[inline]
     pub(crate) fn with_capacity(capacity: usize) -> Self {
         Self {
             v: Vec::with_capacity(capacity),
+            hash_builder: DefaultHashBuilder::default(),
         }
     }
+}
+
+impl<K, V, S> VecMap<K, V, S> {
     #[inline]
     pub(crate) fn capacity(&self) -> usize {
         self.v.capacity()
-    }
-
-    #[inline]
-    pub(crate) fn insert(&mut self, k: K, mut v: V) -> Option<V> {
-        for (ak, av) in &mut self.v {
-            if k == *ak {
-                std::mem::swap(av, &mut v);
-                return Some(v);
-            }
-        }
-        self.insert_idx(k, v);
-        None
-    }
-
-    #[inline]
-    pub(crate) fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
-    where
-        K: Borrow<Q>,
-        Q: Eq,
-    {
-        let mut i = 0;
-        while i != self.v.len() {
-            let (ak, _) = unsafe { self.v.get_unchecked(i) };
-            if k == ak.borrow() {
-                unsafe {
-                    return Some(self.remove_idx(i).1);
-                }
-            }
-            i += 1;
-        }
-        None
     }
 
     #[inline]
@@ -113,15 +96,61 @@ where
     pub(crate) fn shrink_to_fit(&mut self) {
         self.v.shrink_to_fit()
     }
+    #[inline]
+    pub(crate) fn clear(&mut self) {
+        self.v.clear()
+    }
+}
+impl<K, V, S> VecMap<K, V, S> {
+    #[inline]
+    pub(crate) fn hasher(&self) -> &S {
+        &self.hash_builder
+    }
+    #[inline]
+    pub(crate) fn insert(&mut self, k: K, mut v: V) -> Option<V>
+    where
+        K: Eq,
+    {
+        for (ak, av) in &mut self.v {
+            if &k == ak {
+                std::mem::swap(av, &mut v);
+                return Some(v);
+            }
+        }
+        self.insert_idx(k, v);
+        None
+    }
+
+    #[inline]
+    pub(crate) fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
+    where
+        K: Borrow<Q>,
+        Q: Eq,
+    {
+        let mut i = 0;
+        while i != self.v.len() {
+            let (ak, _) = unsafe { self.v.get_unchecked(i) };
+            if k == ak.borrow() {
+                unsafe {
+                    return Some(self.remove_idx(i).1);
+                }
+            }
+            i += 1;
+        }
+        None
+    }
 
     #[inline]
     pub(crate) fn insert_nocheck(&mut self, k: K, v: V) {
         self.v.push((k, v));
     }
 
-    pub(crate) fn entry(&mut self, key: K) -> Entry<K, V> {
+    pub(crate) fn entry(&mut self, key: K) -> Entry<K, V, S>
+    where
+        K: Eq,
+    {
         for (idx, (ak, _v)) in self.v.iter().enumerate() {
-            if &key == ak.borrow() {
+            if &key == ak {
                 return Entry::Occupied(OccupiedEntry::new(idx, key, self));
             }
         }
@@ -169,13 +198,6 @@ where
         None
     }
 
-    #[inline]
-    pub(crate) fn clear(&mut self) {
-        self.v.clear()
-    }
-}
-
-impl<K, V> VecMap<K, V> {
     /// Creates a raw entry builder for the HashMap.
     ///
     /// Raw entries provide the lowest level of control for searching and
@@ -208,7 +230,7 @@ impl<K, V> VecMap<K, V> {
     /// acting erratically, with two keys randomly masking each other. Implementations
     /// are free to assume this doesn't happen (within the limits of memory-safety).
     #[inline]
-    pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<'_, K, V> {
+    pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<'_, K, V, S> {
         RawEntryBuilderMut { map: self }
     }
 
@@ -228,11 +250,10 @@ impl<K, V> VecMap<K, V> {
     ///
     /// Immutable raw entries have very limited use; you might instead want `raw_entry_mut`.
     #[inline]
-    pub fn raw_entry(&self) -> RawEntryBuilder<'_, K, V> {
+    pub fn raw_entry(&self) -> RawEntryBuilder<'_, K, V, S> {
         RawEntryBuilder { map: self }
     }
-}
-impl<K, V> VecMap<K, V> {
+
     /// Removes an element from a given position
     #[inline]
     unsafe fn remove_idx(&mut self, idx: usize) -> (K, V) {
