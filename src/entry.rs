@@ -18,7 +18,10 @@ use std::fmt;
 ///
 /// [`HashMap`]: struct.HashMap.html
 /// [`entry`]: struct.HashMap.html#method.entry
-pub enum Entry<'a, K, V, S> {
+pub enum Entry<'a, K, V, S>
+where
+    S: BuildHasher,
+{
     /// An occupied entry.
     Occupied(OccupiedEntry<'a, K, V, S>),
 
@@ -26,7 +29,10 @@ pub enum Entry<'a, K, V, S> {
     Vacant(VacantEntry<'a, K, V, S>),
 }
 
-impl<'a, K, V, S> Entry<'a, K, V, S> {
+impl<'a, K, V, S> Entry<'a, K, V, S>
+where
+    S: BuildHasher,
+{
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
     ///
@@ -135,7 +141,10 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
     }
 }
 
-impl<'a, K, V, S> From<HashBrownEntry<'a, K, V, S>> for Entry<'a, K, V, S> {
+impl<'a, K, V, S> From<HashBrownEntry<'a, K, V, S>> for Entry<'a, K, V, S>
+where
+    S: BuildHasher,
+{
     fn from(f: HashBrownEntry<'a, K, V, S>) -> Entry<'a, K, V, S> {
         match f {
             HashBrownEntry::Occupied(o) => Entry::Occupied(OccupiedEntry(OccupiedEntryInt::Map(o))),
@@ -144,8 +153,11 @@ impl<'a, K, V, S> From<HashBrownEntry<'a, K, V, S>> for Entry<'a, K, V, S> {
     }
 }
 
-impl<'a, K, V, S> From<VecMapEntry<'a, K, V>> for Entry<'a, K, V, S> {
-    fn from(f: VecMapEntry<'a, K, V>) -> Entry<'a, K, V, S> {
+impl<'a, K, V, S> From<VecMapEntry<'a, K, V, S>> for Entry<'a, K, V, S>
+where
+    S: BuildHasher,
+{
+    fn from(f: VecMapEntry<'a, K, V, S>) -> Entry<'a, K, V, S> {
         match f {
             VecMapEntry::Occupied(o) => Entry::Occupied(OccupiedEntry(OccupiedEntryInt::Vec(o))),
             VecMapEntry::Vacant(o) => Entry::Vacant(VacantEntry(VacantEntryInt::Vec(o))),
@@ -153,7 +165,10 @@ impl<'a, K, V, S> From<VecMapEntry<'a, K, V>> for Entry<'a, K, V, S> {
     }
 }
 
-impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for Entry<'_, K, V, S> {
+impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for Entry<'_, K, V, S>
+where
+    S: BuildHasher,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Entry::Vacant(ref v) => f.debug_tuple("Entry").field(v).finish(),
@@ -166,29 +181,37 @@ impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for Entry<'_, K, V, S> {
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entryx`]: enum.Entry.html
-pub struct OccupiedEntry<'a, K, V, S>(OccupiedEntryInt<'a, K, V, S>);
+pub struct OccupiedEntry<'a, K, V, S>(OccupiedEntryInt<'a, K, V, S>)
+where
+    S: BuildHasher;
 
-enum OccupiedEntryInt<'a, K, V, S> {
+enum OccupiedEntryInt<'a, K, V, S>
+where
+    S: BuildHasher,
+{
     Map(hash_map::OccupiedEntry<'a, K, V, S>),
-    Vec(vecmap::OccupiedEntry<'a, K, V>),
+    Vec(vecmap::OccupiedEntry<'a, K, V, S>),
 }
 
 unsafe impl<K, V, S> Send for OccupiedEntry<'_, K, V, S>
 where
     K: Send,
     V: Send,
-    S: Send,
+    S: Send + BuildHasher,
 {
 }
 unsafe impl<K, V, S> Sync for OccupiedEntry<'_, K, V, S>
 where
     K: Sync,
     V: Sync,
-    S: Sync,
+    S: Sync + BuildHasher,
 {
 }
 
-impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for OccupiedEntry<'_, K, V, S> {
+impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for OccupiedEntry<'_, K, V, S>
+where
+    S: BuildHasher,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
             OccupiedEntryInt::Map(m) => write!(f, "{:?}", m),
@@ -201,16 +224,24 @@ impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for OccupiedEntry<'_, K, V, S> 
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
-pub struct VacantEntry<'a, K, V, S>(VacantEntryInt<'a, K, V, S>);
+pub struct VacantEntry<'a, K, V, S>(VacantEntryInt<'a, K, V, S>)
+where
+    S: BuildHasher;
 
-enum VacantEntryInt<'a, K, V, S> {
+enum VacantEntryInt<'a, K, V, S>
+where
+    S: BuildHasher,
+{
     /// a map based implementation
     Map(hashbrown::hash_map::VacantEntry<'a, K, V, S>),
     /// a vec based implementation
-    Vec(vecmap::VacantEntry<'a, K, V>),
+    Vec(vecmap::VacantEntry<'a, K, V, S>),
 }
 
-impl<K: fmt::Debug, V, S> fmt::Debug for VacantEntry<'_, K, V, S> {
+impl<K: fmt::Debug, V, S> fmt::Debug for VacantEntry<'_, K, V, S>
+where
+    S: BuildHasher,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
             VacantEntryInt::Map(m) => write!(f, "{:?}", m),
@@ -219,7 +250,10 @@ impl<K: fmt::Debug, V, S> fmt::Debug for VacantEntry<'_, K, V, S> {
     }
 }
 
-impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
+impl<'a, K, V, S> OccupiedEntry<'a, K, V, S>
+where
+    S: BuildHasher,
+{
     /// Gets a reference to the key in the entry.
     ///
     /// # Examples
@@ -465,7 +499,10 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     }
 }
 
-impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
+impl<'a, K, V, S> VacantEntry<'a, K, V, S>
+where
+    S: BuildHasher,
+{
     /// Gets a reference to the key that would be used when inserting a value
     /// through the `VacantEntry`.
     ///

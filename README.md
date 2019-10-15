@@ -11,6 +11,8 @@
 
 ---
 
+Note: The heavy lifting in this is done in [hashbrown](https://github.com/rust-lang/hashbrown), and the docs and API are copied from them.
+
 Halfbrown, is a hashmap implementation that uses two backends to optimize for different cernairos:
 
 ## VecMap
@@ -26,6 +28,9 @@ For more then 32 elements it upgrades the map to aq hashbrown base map to accoun
 
 halfbrown itself is licensed under either of
 
-* Apache License, Version 2.0, (LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0)
-* MIT license (LICENSE-MIT or http://opensource.org/licenses/MIT)
+* Apache License, Version 2.0, ([LICENSE-APACHE](http://www.apache.org/licenses/LICENSE-2.0))
+* MIT license ([LICENSE-MIT](http://opensource.org/licenses/MIT))
+
 at your option.
+
+Code / docs copied from [hashbrown](https://github.com/rust-lang/hashbrown) are obviously licensed under their License.
