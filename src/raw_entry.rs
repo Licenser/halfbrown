@@ -86,10 +86,10 @@ impl<'a, K, V, S> From<vecmap::RawOccupiedEntryMut<'a, K, V, S>>
     }
 }
 
-impl<'a, K, V, S> From<hash_map::RawOccupiedEntryMut<'a, K, V>>
+impl<'a, K, V, S> From<hash_map::RawOccupiedEntryMut<'a, K, V, S>>
     for RawOccupiedEntryMut<'a, K, V, S>
 {
-    fn from(m: hash_map::RawOccupiedEntryMut<'a, K, V>) -> Self {
+    fn from(m: hash_map::RawOccupiedEntryMut<'a, K, V, S>) -> Self {
         Self(RawOccupiedEntryMutInt::Map(m))
     }
 }
@@ -112,7 +112,7 @@ where
 
 enum RawOccupiedEntryMutInt<'a, K, V, S> {
     Vec(vecmap::RawOccupiedEntryMut<'a, K, V, S>),
-    Map(hash_map::RawOccupiedEntryMut<'a, K, V>),
+    Map(hash_map::RawOccupiedEntryMut<'a, K, V, S>),
 }
 
 unsafe impl<K, V, S> Send for RawOccupiedEntryMutInt<'_, K, V, S>
