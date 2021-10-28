@@ -4,7 +4,7 @@
 //!
 //! The basic idea is that hash maps are expensive to
 //! insert and lookup for small numbers of entries
-//! but effective for lager numbers.
+//! but effective for larger numbers.
 //!
 //! So for smaller maps, we picked 32 entries as a rule
 //! of thumb, we simply store data in a list of tuples.
