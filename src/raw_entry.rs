@@ -1,6 +1,6 @@
 // based on / take from <https://github.com/rust-lang/hashbrown/blob/62a1ae24d4678fcbf777bef6b205fadeecb781d9/src/map.rs>
 
-use super::*;
+use super::{fmt, hashbrown, Borrow, BuildHasher, Debug, Hash};
 use crate::vecmap;
 use hashbrown::hash_map;
 /*
@@ -87,10 +87,10 @@ impl<'map, K, V, S> From<vecmap::RawOccupiedEntryMut<'map, K, V, S>>
     }
 }
 
-impl<'map, K, V, S> From<hash_map::RawOccupiedEntryMut<'map, K, V>>
+impl<'map, K, V, S> From<hash_map::RawOccupiedEntryMut<'map, K, V, S>>
     for RawOccupiedEntryMut<'map, K, V, S>
 {
-    fn from(m: hash_map::RawOccupiedEntryMut<'map, K, V>) -> Self {
+    fn from(m: hash_map::RawOccupiedEntryMut<'map, K, V, S>) -> Self {
         Self(RawOccupiedEntryMutInt::Map(m))
     }
 }
@@ -113,7 +113,7 @@ where
 
 enum RawOccupiedEntryMutInt<'map, K, V, S> {
     Vec(vecmap::RawOccupiedEntryMut<'map, K, V, S>),
-    Map(hash_map::RawOccupiedEntryMut<'map, K, V>),
+    Map(hash_map::RawOccupiedEntryMut<'map, K, V, S>),
 }
 
 unsafe impl<K, V, S> Send for RawOccupiedEntryMutInt<'_, K, V, S>
@@ -288,7 +288,7 @@ impl<'map, K, V, S> RawEntryMut<'map, K, V, S>
 where
     S: BuildHasher,
 {
-    /// Sets the value of the entry, and returns a RawOccupiedEntryMut.
+    /// Sets the value of the entry, and returns a `RawOccupiedEntryMut`.
     ///
     /// # Examples
     ///
@@ -431,6 +431,7 @@ where
 {
     /// Gets a reference to the key in the entry.
     #[inline]
+    #[must_use]
     pub fn key(&self) -> &K {
         match &self.0 {
             RawOccupiedEntryMutInt::Vec(e) => e.key(),
@@ -450,6 +451,7 @@ where
     /// Converts the entry into a mutable reference to the key in the entry
     /// with a lifetime bound to the map itself.
     #[inline]
+    #[must_use]
     pub fn into_key(self) -> &'map mut K {
         match self.0 {
             RawOccupiedEntryMutInt::Vec(e) => e.into_key(),
@@ -459,6 +461,7 @@ where
 
     /// Gets a reference to the value in the entry.
     #[inline]
+    #[must_use]
     pub fn get(&self) -> &V {
         match &self.0 {
             RawOccupiedEntryMutInt::Vec(e) => e.get(),
@@ -466,9 +469,10 @@ where
         }
     }
 
-    /// Converts the OccupiedEntry into a mutable reference to the value in the entry
+    /// Converts the `OccupiedEntry` into a mutable reference to the value in the entry
     /// with a lifetime bound to the map itself.
     #[inline]
+    #[must_use]
     pub fn into_mut(self) -> &'map mut V {
         match self.0 {
             RawOccupiedEntryMutInt::Vec(e) => e.into_mut(),
@@ -503,9 +507,10 @@ where
         }
     }
 
-    /// Converts the OccupiedEntry into a mutable reference to the key and value in the entry
+    /// Converts the `OccupiedEntry` into a mutable reference to the key and value in the entry
     /// with a lifetime bound to the map itself.
     #[inline]
+    #[must_use]
     pub fn into_key_value(self) -> (&'map mut K, &'map mut V) {
         match self.0 {
             RawOccupiedEntryMutInt::Vec(e) => e.into_key_value(),
@@ -533,6 +538,7 @@ where
 
     /// Takes the value out of the entry, and returns it.
     #[inline]
+    #[must_use]
     pub fn remove(self) -> V {
         match self.0 {
             RawOccupiedEntryMutInt::Vec(e) => e.remove(),
@@ -542,6 +548,7 @@ where
 
     /// Take the ownership of the key and value from the map.
     #[inline]
+    #[must_use]
     pub fn remove_entry(self) -> (K, V) {
         match self.0 {
             RawOccupiedEntryMutInt::Vec(e) => e.remove_entry(),
@@ -554,7 +561,7 @@ impl<'map, K, V, S> RawVacantEntryMut<'map, K, V, S>
 where
     S: BuildHasher,
 {
-    /// Sets the value of the entry with the VacantEntry's key,
+    /// Sets the value of the entry with the `VacantEntry`'s key,
     /// and returns a mutable reference to it.
     #[inline]
     pub fn insert(self, key: K, value: V) -> (&'map mut K, &'map mut V)
@@ -568,7 +575,7 @@ where
         }
     }
 
-    /// Sets the value of the entry with the VacantEntry's key,
+    /// Sets the value of the entry with the `VacantEntry`'s key,
     /// and returns a mutable reference to it.
     #[inline]
     #[allow(clippy::shadow_unrelated)]

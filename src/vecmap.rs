@@ -58,6 +58,19 @@ impl<K, V> VecMap<K, V, DefaultHashBuilder> {
 
 impl<K, V, S> VecMap<K, V, S> {
     #[inline]
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&K, &mut V) -> bool,
+    {
+        let mut new = Vec::new();
+        std::mem::swap(&mut new, &mut self.v);
+        self.v = new
+            .into_iter()
+            .filter_map(|(k, mut v)| if f(&k, &mut v) { Some((k, v)) } else { None })
+            .collect();
+    }
+
+    #[inline]
     pub(crate) fn capacity(&self) -> usize {
         self.v.capacity()
     }
@@ -89,16 +102,16 @@ impl<K, V, S> VecMap<K, V, S> {
 
     #[inline]
     pub(crate) fn reserve(&mut self, additional: usize) {
-        self.v.reserve(additional)
+        self.v.reserve(additional);
     }
 
     #[inline]
     pub(crate) fn shrink_to_fit(&mut self) {
-        self.v.shrink_to_fit()
+        self.v.shrink_to_fit();
     }
     #[inline]
     pub(crate) fn clear(&mut self) {
-        self.v.clear()
+        self.v.clear();
     }
 }
 impl<K, V, S> VecMap<K, V, S> {
@@ -164,7 +177,7 @@ impl<K, V, S> VecMap<K, V, S> {
     {
         for (ak, v) in &self.v {
             if k == ak.borrow() {
-                return Some(&v);
+                return Some(v);
             }
         }
         None
@@ -198,7 +211,7 @@ impl<K, V, S> VecMap<K, V, S> {
         None
     }
 
-    /// Creates a raw entry builder for the HashMap.
+    /// Creates a raw entry builder for the `HashMap`.
     ///
     /// Raw entries provide the lowest level of control for searching and
     /// manipulating a map. They must be manually initialized with a hash and
@@ -213,13 +226,13 @@ impl<K, V, S> VecMap<K, V, S> {
     /// * Using custom comparison logic without newtype wrappers
     ///
     /// Because raw entries provide much more low-level control, it's much easier
-    /// to put the HashMap into an inconsistent state which, while memory-safe,
+    /// to put the `HashMap` into an inconsistent state which, while memory-safe,
     /// will cause the map to produce seemingly random results. Higher-level and
     /// more foolproof APIs like `entry` should be preferred when possible.
     ///
     /// In particular, the hash used to initialized the raw entry must still be
     /// consistent with the hash of the key that is ultimately stored in the entry.
-    /// This is because implementations of HashMap may need to recompute hashes
+    /// This is because implementations of `HashMap` may need to recompute hashes
     /// when resizing, at which point only the keys are available.
     ///
     /// Raw entries give mutable access to the keys. This must not be used
@@ -234,7 +247,7 @@ impl<K, V, S> VecMap<K, V, S> {
         RawEntryBuilderMut { map: self }
     }
 
-    /// Creates a raw immutable entry builder for the HashMap.
+    /// Creates a raw immutable entry builder for the `HashMap`.
     ///
     /// Raw entries provide the lowest level of control for searching and
     /// manipulating a map. They must be manually initialized with a hash and

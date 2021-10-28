@@ -18,13 +18,12 @@
 //! rusts hashmap.rs and should be considered under
 //! their copyright.
 
-#![forbid(warnings)]
 #![warn(unused_extern_crates)]
 #![cfg_attr(
     feature = "cargo-clippy",
     deny(
         clippy::all,
-        clippy::result_unwrap_used,
+        clippy::unwrap_used,
         clippy::unnecessary_unwrap,
         clippy::pedantic
     ),
@@ -114,6 +113,7 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// let mut map: HashMap<&str, i32> = HashMap::new();
     /// ```
     #[inline]
+    #[must_use]
     pub fn new() -> Self {
         Self(HashMapInt::Vec(VecMap::new()))
     }
@@ -129,6 +129,7 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// let mut map: HashMap<&str, i32> = HashMap::with_capacity(10);
     /// ```
     #[inline]
+    #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
         Self(if capacity > VEC_LIMIT_UPPER {
             HashMapInt::Map(HashBrown::with_capacity_and_hasher(
@@ -151,6 +152,7 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// assert!(map.is_vec());
     /// ```
     #[inline]
+    #[must_use]
     pub fn vec_with_capacity(capacity: usize) -> Self {
         Self(HashMapInt::Vec(VecMap::with_capacity(capacity)))
     }
@@ -163,9 +165,9 @@ impl<K, V, S> HashMap<K, V, S> {
     /// The created map has the default initial capacity.
     ///
     /// Warning: `hash_builder` is normally randomly generated, and
-    /// is designed to allow HashMaps to be resistant to attacks that
+    /// is designed to allow `HashMaps` to be resistant to attacks that
     /// cause many collisions and very poor performance. Setting it
-    /// manually using this function can expose a DoS attack vector.
+    /// manually using this function can expose a `DoS` attack vector.
     ///
     /// # Examples
     ///
@@ -189,9 +191,9 @@ impl<K, V, S> HashMap<K, V, S> {
     /// reallocating. If `capacity` is 0, the hash map will not allocate.
     ///
     /// Warning: `hash_builder` is normally randomly generated, and
-    /// is designed to allow HashMaps to be resistant to attacks that
+    /// is designed to allow `HashMaps` to be resistant to attacks that
     /// cause many collisions and very poor performance. Setting it
-    /// manually using this function can expose a DoS attack vector.
+    /// manually using this function can expose a `DoS` attack vector.
     ///
     /// # Examples
     ///
@@ -246,6 +248,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// assert!(map.capacity() >= 100);
     /// ```
     #[inline]
+    #[allow(clippy::missing_panics_doc)]
     pub fn capacity(&self) -> usize {
         match &self.0 {
             HashMapInt::Map(m) => m.capacity(),
@@ -764,6 +767,32 @@ where
         }
     }
 
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)` returns `false`.
+    /// The elements are visited in unsorted (and unspecified) order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use halfbrown::HashMap;
+    ///
+    /// let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x*10)).collect();
+    /// map.retain(|&k, _| k % 2 == 0);
+    /// assert_eq!(map.len(), 4);
+    /// ```
+    #[inline]
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&K, &mut V) -> bool,
+    {
+        match &mut self.0 {
+            HashMapInt::Map(m) => m.retain(f),
+            HashMapInt::Vec(m) => m.retain(f),
+            HashMapInt::None => unreachable!(),
+        }
+    }
+
     /// Inserts element, this ignores check in the vector
     /// map if keys are present - it's a fast way to build
     /// a new map when uniqueness is known ahead of time.
@@ -823,7 +852,7 @@ where
     S: BuildHasher,
     K: Eq + Hash,
 {
-    /// Creates a raw entry builder for the HashMap.
+    /// Creates a raw entry builder for the `HashMap`.
     ///
     /// Raw entries provide the lowest level of control for searching and
     /// manipulating a map. They must be manually initialized with a hash and
@@ -838,13 +867,13 @@ where
     /// * Using custom comparison logic without newtype wrappers
     ///
     /// Because raw entries provide much more low-level control, it's much easier
-    /// to put the HashMap into an inconsistent state which, while memory-safe,
+    /// to put the `HashMap` into an inconsistent state which, while memory-safe,
     /// will cause the map to produce seemingly random results. Higher-level and
     /// more foolproof APIs like `entry` should be preferred when possible.
     ///
     /// In particular, the hash used to initialized the raw entry must still be
     /// consistent with the hash of the key that is ultimately stored in the entry.
-    /// This is because implementations of HashMap may need to recompute hashes
+    /// This is because implementations of `HashMap` may need to recompute hashes
     /// when resizing, at which point only the keys are available.
     ///
     /// Raw entries give mutable access to the keys. This must not be used
@@ -863,7 +892,7 @@ where
         }
     }
 
-    /// Creates a raw immutable entry builder for the HashMap.
+    /// Creates a raw immutable entry builder for the `HashMap`.
     ///
     /// Raw entries provide the lowest level of control for searching and
     /// manipulating a map. They must be manually initialized with a hash and
