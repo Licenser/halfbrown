@@ -273,7 +273,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
         unsafe { &mut self.map.v.get_unchecked_mut(self.idx).1 }
     }
 
-    /// Converts the OccupiedEntry into a mutable reference to the value in the entry
+    /// Converts the `OccupiedEntry` into a mutable reference to the value in the entry
     /// with a lifetime bound to the map itself.
     ///
     /// If you need multiple references to the `OccupiedEntry`, see [`get_mut`].
@@ -368,6 +368,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     ///
     /// ```
     #[inline]
+    #[allow(clippy::unwrap_used)]
     pub fn replace_entry(self, value: V) -> (K, V) {
         let entry = unsafe { self.map.v.get_unchecked_mut(self.idx) };
 
@@ -402,6 +403,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// }
     /// ```
     #[inline]
+    #[allow(clippy::unwrap_used)]
     pub fn replace_key(self) -> K {
         let entry = unsafe { self.map.v.get_unchecked_mut(self.idx) };
         mem::replace(&mut entry.0, self.key.unwrap())
@@ -462,7 +464,7 @@ impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
         self.key
     }
 
-    /// Sets the value of the entry with the VacantEntry's key,
+    /// Sets the value of the entry with the `VacantEntry`'s key,
     /// and returns a mutable reference to it.
     ///
     /// # Examples

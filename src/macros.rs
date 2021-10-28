@@ -4,7 +4,7 @@
 //! Taken from: <https://docs.rs/maplit/1/>
 //! Macros for halfbrown literals.
 //!
-//! ```norun
+//! ```no_run
 //! #[macro_use] extern crate halfbrown;
 //!
 //! # fn main() {
@@ -30,7 +30,7 @@
 ///
 /// ## Example
 ///
-/// ```norun
+/// ```no_run
 /// #[macro_use] extern crate halfbrown;
 /// # fn main() {
 ///

@@ -1,6 +1,6 @@
 // based on / take from <https://github.com/rust-lang/hashbrown/blob/62a1ae24d4678fcbf777bef6b205fadeecb781d9/src/map.rs>
 
-use super::*;
+use super::{Borrow, VecMap};
 use std::fmt::{self, Debug};
 use std::mem;
 
@@ -68,15 +68,15 @@ pub struct RawVacantEntryMut<'a, K, V, S> {
 /// See the [`VecMap::raw_entry`] docs for usage examples.
 ///
 /// [`VecMap::raw_entry`]: struct.VecMap.html#method.raw_entry
-pub struct RawEntryBuilder<'a, K, V, S> {
-    pub(crate) map: &'a VecMap<K, V, S>,
+pub struct RawEntryBuilder<'map, K, V, S> {
+    pub(crate) map: &'map VecMap<K, V, S>,
 }
 
-impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S> {
+impl<'map, K, V, S> RawEntryBuilderMut<'map, K, V, S> {
     /// Creates a `RawEntryMut` from the given key.
     #[inline]
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_key<Q: ?Sized>(self, k: &Q) -> RawEntryMut<'a, K, V, S>
+    pub fn from_key<Q: ?Sized>(self, k: &Q) -> RawEntryMut<'map, K, V, S>
     where
         K: Borrow<Q>,
         Q: Eq,
@@ -87,7 +87,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S> {
     /// Creates a `RawEntryMut` from the given key and its hash.
     #[inline]
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> RawEntryMut<'a, K, V, S>
+    pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> RawEntryMut<'map, K, V, S>
     where
         K: Borrow<Q>,
         Q: Eq,
@@ -154,7 +154,7 @@ impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S> {
     {
         for (k, v) in &self.map.v {
             if is_match(k) {
-                return Some((&k, &v));
+                return Some((k, v));
             }
         }
         None
@@ -172,7 +172,7 @@ impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S> {
 }
 
 impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
-    /// Sets the value of the entry, and returns a RawOccupiedEntryMut.
+    /// Sets the value of the entry, and returns a `RawOccupiedEntryMut`.
     ///
     /// # Examples
     ///
@@ -315,7 +315,7 @@ impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
         unsafe { &self.map.v.get_unchecked(self.idx).1 }
     }
 
-    /// Converts the OccupiedEntry into a mutable reference to the value in the entry
+    /// Converts the `OccupiedEntry` into a mutable reference to the value in the entry
     /// with a lifetime bound to the map itself.
     #[inline]
     pub fn into_mut(self) -> &'a mut V {
@@ -343,7 +343,7 @@ impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
         unsafe { self.map.get_mut_idx(self.idx) }
     }
 
-    /// Converts the OccupiedEntry into a mutable reference to the key and value in the entry
+    /// Converts the `OccupiedEntry` into a mutable reference to the key and value in the entry
     /// with a lifetime bound to the map itself.
     #[inline]
     pub fn into_key_value(self) -> (&'a mut K, &'a mut V) {
@@ -376,7 +376,7 @@ impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
 }
 
 impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
-    /// Sets the value of the entry with the VacantEntry's key,
+    /// Sets the value of the entry with the `VacantEntry`'s key,
     /// and returns a mutable reference to it.
     #[inline]
     pub fn insert(self, key: K, value: V) -> (&'a mut K, &'a mut V) {
@@ -384,7 +384,7 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
         unsafe { self.map.get_mut_idx(i) }
     }
 
-    /// Sets the value of the entry with the VacantEntry's key,
+    /// Sets the value of the entry with the `VacantEntry`'s key,
     /// and returns a mutable reference to it.
     #[inline]
     #[allow(clippy::shadow_unrelated)]

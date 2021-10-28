@@ -1,6 +1,5 @@
 use super::{HashMap, HashMapInt};
 use core::hash::{BuildHasher, Hash};
-use hashbrown;
 use std::iter::{FromIterator, IntoIterator};
 
 /// Iterator over the key value pairs of a Halfbrown map
@@ -24,7 +23,7 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
             IterInt::Map(m) => m.next(),
             IterInt::Vec(m) => {
                 if let Some((k, v)) = m.next() {
-                    Some((&k, &v))
+                    Some((k, v))
                 } else {
                     None
                 }
@@ -48,6 +47,7 @@ enum IntoIterInt<K, V> {
 }
 impl<K, V> IntoIter<K, V> {
     /// The length of this iterator
+    #[must_use]
     pub fn len(&self) -> usize {
         match &self.0 {
             IntoIterInt::Map(i) => i.len(),
@@ -55,6 +55,7 @@ impl<K, V> IntoIter<K, V> {
         }
     }
     /// If this iteratoris empty
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
