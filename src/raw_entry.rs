@@ -87,6 +87,7 @@ impl<'map, K, V, S> From<vecmap::RawOccupiedEntryMut<'map, K, V, S>>
     }
 }
 
+
 impl<'map, K, V, S> From<hash_map::RawOccupiedEntryMut<'map, K, V, S>>
     for RawOccupiedEntryMut<'map, K, V, S>
 {
@@ -110,6 +111,7 @@ where
     S: Sync,
 {
 }
+
 
 enum RawOccupiedEntryMutInt<'map, K, V, S> {
     Vec(vecmap::RawOccupiedEntryMut<'map, K, V, S>),
