@@ -68,15 +68,15 @@ pub struct RawVacantEntryMut<'a, K, V, S> {
 /// See the [`VecMap::raw_entry`] docs for usage examples.
 ///
 /// [`VecMap::raw_entry`]: struct.VecMap.html#method.raw_entry
-pub struct RawEntryBuilder<'a, K, V, S> {
-    pub(crate) map: &'a VecMap<K, V, S>,
+pub struct RawEntryBuilder<'map, K, V, S> {
+    pub(crate) map: &'map VecMap<K, V, S>,
 }
 
-impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S> {
+impl<'map, K, V, S> RawEntryBuilderMut<'map, K, V, S> {
     /// Creates a `RawEntryMut` from the given key.
     #[inline]
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_key<Q: ?Sized>(self, k: &Q) -> RawEntryMut<'a, K, V, S>
+    pub fn from_key<Q: ?Sized>(self, k: &Q) -> RawEntryMut<'map, K, V, S>
     where
         K: Borrow<Q>,
         Q: Eq,
@@ -87,7 +87,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S> {
     /// Creates a `RawEntryMut` from the given key and its hash.
     #[inline]
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> RawEntryMut<'a, K, V, S>
+    pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> RawEntryMut<'map, K, V, S>
     where
         K: Borrow<Q>,
         Q: Eq,
