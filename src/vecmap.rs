@@ -140,12 +140,21 @@ impl<K, V, S> VecMap<K, V, S> {
         K: Borrow<Q>,
         Q: Eq,
     {
+        self.remove_entry(k).map(|e| e.1)
+    }
+
+    #[inline]
+    pub(crate) fn remove_entry<Q: ?Sized>(&mut self, k: &Q) -> Option<(K, V)>
+    where
+        K: Borrow<Q>,
+        Q: Eq,
+    {
         let mut i = 0;
         while i != self.v.len() {
             let (ak, _) = unsafe { self.v.get_unchecked(i) };
             if k == ak.borrow() {
                 unsafe {
-                    return Some(self.remove_idx(i).1);
+                    return Some(self.remove_idx(i));
                 }
             }
             i += 1;
