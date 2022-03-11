@@ -3,6 +3,7 @@ use core::hash::{BuildHasher, Hash};
 use std::iter::{FromIterator, IntoIterator};
 
 /// Iterator over the key value pairs of a Halfbrown map
+#[derive(Clone, Debug)]
 pub struct Iter<'a, K, V>(IterInt<'a, K, V>);
 
 impl<'a, K, V> From<IterInt<'a, K, V>> for Iter<'a, K, V> {
@@ -10,6 +11,7 @@ impl<'a, K, V> From<IterInt<'a, K, V>> for Iter<'a, K, V> {
         Self(i)
     }
 }
+#[derive(Clone, Debug)]
 pub(crate) enum IterInt<'a, K, V> {
     Map(hashbrown::hash_map::Iter<'a, K, V>),
     Vec(std::slice::Iter<'a, (K, V)>),
