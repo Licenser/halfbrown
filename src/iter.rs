@@ -81,10 +81,7 @@ impl<K, V> Iterator for IntoIter<K, V> {
     }
 }
 
-impl<K, V, S> IntoIterator for HashMap<K, V, S>
-where
-    K: Eq + Hash,
-{
+impl<K, V, S> IntoIterator for HashMap<K, V, S> {
     type Item = (K, V);
     type IntoIter = IntoIter<K, V>;
 
@@ -98,10 +95,7 @@ where
     }
 }
 
-impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S>
-where
-    K: Eq + Hash,
-{
+impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S> {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;
 
