@@ -181,14 +181,9 @@ where
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entryx`]: enum.Entry.html
-pub struct OccupiedEntry<'a, K, V, S>(OccupiedEntryInt<'a, K, V, S>)
-where
-    S: BuildHasher;
+pub struct OccupiedEntry<'a, K, V, S>(OccupiedEntryInt<'a, K, V, S>);
 
-enum OccupiedEntryInt<'a, K, V, S>
-where
-    S: BuildHasher,
-{
+enum OccupiedEntryInt<'a, K, V, S> {
     Map(hash_map::OccupiedEntry<'a, K, V, S>),
     Vec(vecmap::OccupiedEntry<'a, K, V, S>),
 }
@@ -197,21 +192,18 @@ unsafe impl<K, V, S> Send for OccupiedEntry<'_, K, V, S>
 where
     K: Send,
     V: Send,
-    S: Send + BuildHasher,
+    S: Send,
 {
 }
 unsafe impl<K, V, S> Sync for OccupiedEntry<'_, K, V, S>
 where
     K: Sync,
     V: Sync,
-    S: Sync + BuildHasher,
+    S: Sync,
 {
 }
 
-impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for OccupiedEntry<'_, K, V, S>
-where
-    S: BuildHasher,
-{
+impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for OccupiedEntry<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
             OccupiedEntryInt::Map(m) => write!(f, "{:?}", m),
