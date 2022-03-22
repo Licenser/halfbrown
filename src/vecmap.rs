@@ -14,12 +14,12 @@ pub(crate) struct VecMap<K, V, S = DefaultHashBuilder> {
     hash_builder: S,
 }
 
-impl<K, V> Default for VecMap<K, V, DefaultHashBuilder> {
+impl<K, V, S: Default> Default for VecMap<K, V, S> {
     #[inline]
     fn default() -> Self {
         Self {
             v: Vec::new(),
-            hash_builder: DefaultHashBuilder::default(),
+            hash_builder: S::default(),
         }
     }
 }

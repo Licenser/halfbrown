@@ -65,7 +65,7 @@ pub const VEC_LIMIT_UPPER: usize = 32;
 #[derive(Clone)]
 pub struct HashMap<K, V, S = DefaultHashBuilder>(HashMapInt<K, V, S>);
 
-impl<K: Default, V: Default> Default for HashMap<K, V, DefaultHashBuilder> {
+impl<K, V, S: Default> Default for HashMap<K, V, S> {
     #[inline]
     fn default() -> Self {
         Self(HashMapInt::default())
@@ -89,11 +89,7 @@ enum HashMapInt<K, V, S = DefaultHashBuilder> {
     None,
 }
 
-impl<K, V> Default for HashMapInt<K, V, DefaultHashBuilder>
-where
-    K: Default,
-    V: Default,
-{
+impl<K, V, S: Default> Default for HashMapInt<K, V, S> {
     #[inline]
     fn default() -> Self {
         Self::Vec(VecMap::default())
