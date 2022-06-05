@@ -3,18 +3,35 @@ use core::hash::{BuildHasher, Hash};
 use std::iter::{FromIterator, IntoIterator};
 
 /// Iterator over the key value pairs of a Halfbrown map
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Iter<'a, K, V>(IterInt<'a, K, V>);
+
+/// Manual implementation so that `Clone` isn't required for `K` nor `V`
+impl<'a, K, V> Clone for Iter<'a, K, V> {
+    fn clone(&self) -> Self {
+        Iter(self.0.clone())
+    }
+}
 
 impl<'a, K, V> From<IterInt<'a, K, V>> for Iter<'a, K, V> {
     fn from(i: IterInt<'a, K, V>) -> Self {
         Self(i)
     }
 }
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) enum IterInt<'a, K, V> {
     Map(hashbrown::hash_map::Iter<'a, K, V>),
     Vec(std::slice::Iter<'a, (K, V)>),
+}
+
+/// Manual implementation so that `Clone` isn't required for `K` nor `V`
+impl<'a, K, V> Clone for IterInt<'a, K, V> {
+    fn clone(&self) -> Self {
+        match self {
+            IterInt::Map(i) => IterInt::Map(i.clone()),
+            IterInt::Vec(i) => IterInt::Vec(i.clone()),
+        }
+    }
 }
 
 impl<'a, K, V> Iterator for Iter<'a, K, V> {
