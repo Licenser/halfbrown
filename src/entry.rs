@@ -121,6 +121,7 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
     /// assert_eq!(map["poneyland"], 43);
     /// ```
     #[inline]
+    #[must_use]
     pub fn and_modify<F>(self, f: F) -> Self
     where
         F: FnOnce(&mut V),
