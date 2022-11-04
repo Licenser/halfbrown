@@ -135,7 +135,34 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
         }
     }
 }
-
+impl<'a, K, V: Default, S> Entry<'a, K, V, S> {
+    /// Ensures a value is in the entry by inserting the default value if empty,
+    /// and returns a mutable reference to the value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() {
+    /// use halfbrown::HashMap;
+    ///
+    /// let mut map: HashMap<&str, Option<u32>> = HashMap::new();
+    /// map.entry("poneyland").or_default();
+    ///
+    /// assert_eq!(map["poneyland"], None);
+    /// # }
+    /// ```
+    #[inline]
+    pub fn or_default(self) -> &'a mut V
+    where
+        K: Hash,
+        S: BuildHasher,
+    {
+        match self {
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => entry.insert(Default::default()),
+        }
+    }
+}
 impl<'a, K, V, S> From<HashBrownEntry<'a, K, V, S>> for Entry<'a, K, V, S> {
     fn from(f: HashBrownEntry<'a, K, V, S>) -> Entry<'a, K, V, S> {
         match f {
