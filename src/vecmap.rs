@@ -142,19 +142,19 @@ impl<K, V, S> VecMap<K, V, S> {
     }
 
     #[inline]
-    pub(crate) fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
+    pub(crate) fn remove<Q>(&mut self, k: &Q) -> Option<V>
     where
         K: Borrow<Q>,
-        Q: Eq,
+        Q: Eq + ?Sized,
     {
         self.remove_entry(k).map(|e| e.1)
     }
 
     #[inline]
-    pub(crate) fn remove_entry<Q: ?Sized>(&mut self, k: &Q) -> Option<(K, V)>
+    pub(crate) fn remove_entry<Q>(&mut self, k: &Q) -> Option<(K, V)>
     where
         K: Borrow<Q>,
-        Q: Eq,
+        Q: Eq + ?Sized,
     {
         let mut i = 0;
         while i != self.v.len() {
@@ -186,10 +186,10 @@ impl<K, V, S> VecMap<K, V, S> {
         Entry::Vacant(VacantEntry::new(key, self))
     }
     #[inline]
-    pub(crate) fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
+    pub(crate) fn get<Q>(&self, k: &Q) -> Option<&V>
     where
         K: Borrow<Q>,
-        Q: Eq,
+        Q: Eq + ?Sized,
     {
         for (ak, v) in &self.v {
             if k == ak.borrow() {
@@ -200,10 +200,10 @@ impl<K, V, S> VecMap<K, V, S> {
     }
 
     #[inline]
-    pub(crate) fn contains_key<Q: ?Sized>(&self, k: &Q) -> bool
+    pub(crate) fn contains_key<Q>(&self, k: &Q) -> bool
     where
         K: Borrow<Q>,
-        Q: Eq,
+        Q: Eq + ?Sized,
     {
         for (ak, _v) in &self.v {
             if k == ak.borrow() {
@@ -214,10 +214,10 @@ impl<K, V, S> VecMap<K, V, S> {
     }
 
     #[inline]
-    pub(crate) fn get_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut V>
+    pub(crate) fn get_mut<Q>(&mut self, k: &Q) -> Option<&mut V>
     where
         K: Borrow<Q>,
-        Q: Eq,
+        Q: Eq + ?Sized,
     {
         for (ak, v) in &mut self.v {
             if k.eq((*ak).borrow()) {

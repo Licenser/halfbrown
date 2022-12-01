@@ -600,10 +600,10 @@ where
     /// assert_eq!(map.get(&2), None);
     /// ```
     #[inline]
-    pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
+    pub fn get<Q>(&self, k: &Q) -> Option<&V>
     where
         K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: ?Sized + Hash + Eq,
     {
         match &self.0 {
             HashMapInt::Map(m) => m.get(k),
@@ -631,10 +631,10 @@ where
     /// assert_eq!(map.contains_key(&1), true);
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
-    pub fn contains_key<Q: ?Sized>(&self, k: &Q) -> bool
+    pub fn contains_key<Q>(&self, k: &Q) -> bool
     where
         K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Eq + ?Sized,
     {
         match &self.0 {
             HashMapInt::Map(m) => m.contains_key(k),
@@ -666,10 +666,10 @@ where
     /// ```
 
     #[inline]
-    pub fn get_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut V>
+    pub fn get_mut<Q>(&mut self, k: &Q) -> Option<&mut V>
     where
         K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Eq + ?Sized,
     {
         match &mut self.0 {
             HashMapInt::Map(m) => m.get_mut(k),
@@ -751,10 +751,10 @@ where
     /// assert_eq!(map.remove(&1), None);
     /// ```
     #[inline]
-    pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
+    pub fn remove<Q>(&mut self, k: &Q) -> Option<V>
     where
         K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Eq + ?Sized,
     {
         match &mut self.0 {
             HashMapInt::Map(m) => m.remove(k),
@@ -784,10 +784,10 @@ where
     /// assert_eq!(map.remove(&1), None);
     /// ```
     #[inline]
-    pub fn remove_entry<Q: ?Sized>(&mut self, k: &Q) -> Option<(K, V)>
+    pub fn remove_entry<Q>(&mut self, k: &Q) -> Option<(K, V)>
     where
         K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Eq + ?Sized,
     {
         match &mut self.0 {
             HashMapInt::Map(m) => m.remove_entry(k),
@@ -857,10 +857,10 @@ where
     }
 }
 
-impl<K, Q: ?Sized, V, S> Index<&Q> for HashMap<K, V, S>
+impl<K, Q, V, S> Index<&Q> for HashMap<K, V, S>
 where
     K: Eq + Hash + Borrow<Q>,
-    Q: Eq + Hash,
+    Q: Eq + Hash + ?Sized,
     S: BuildHasher,
 {
     type Output = V;
