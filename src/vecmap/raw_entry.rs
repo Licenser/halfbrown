@@ -76,10 +76,10 @@ impl<'map, K, V, S> RawEntryBuilderMut<'map, K, V, S> {
     /// Creates a `RawEntryMut` from the given key.
     #[inline]
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_key<Q: ?Sized>(self, k: &Q) -> RawEntryMut<'map, K, V, S>
+    pub fn from_key<Q>(self, k: &Q) -> RawEntryMut<'map, K, V, S>
     where
         K: Borrow<Q>,
-        Q: Eq,
+        Q: Eq + ?Sized,
     {
         self.from_key_hashed_nocheck(0, k)
     }
@@ -87,10 +87,10 @@ impl<'map, K, V, S> RawEntryBuilderMut<'map, K, V, S> {
     /// Creates a `RawEntryMut` from the given key and its hash.
     #[inline]
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> RawEntryMut<'map, K, V, S>
+    pub fn from_key_hashed_nocheck<Q>(self, hash: u64, k: &Q) -> RawEntryMut<'map, K, V, S>
     where
         K: Borrow<Q>,
-        Q: Eq,
+        Q: Eq + ?Sized,
     {
         self.from_hash(hash, |q| q.borrow().eq(k))
     }
@@ -127,10 +127,10 @@ impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S> {
     /// Access an entry by key.
     #[inline]
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_key<Q: ?Sized>(self, k: &Q) -> Option<(&'a K, &'a V)>
+    pub fn from_key<Q>(self, k: &Q) -> Option<(&'a K, &'a V)>
     where
         K: Borrow<Q>,
-        Q: Eq,
+        Q: Eq + ?Sized,
     {
         self.from_key_hashed_nocheck(0, k)
     }
@@ -139,10 +139,10 @@ impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S> {
     /// Note hash has no effect for `VecMap`
     #[inline]
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> Option<(&'a K, &'a V)>
+    pub fn from_key_hashed_nocheck<Q>(self, hash: u64, k: &Q) -> Option<(&'a K, &'a V)>
     where
         K: Borrow<Q>,
-        Q: Eq,
+        Q: Eq + ?Sized,
     {
         self.from_hash(hash, |q| q.borrow().eq(k))
     }
