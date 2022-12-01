@@ -962,6 +962,14 @@ where
     }
 }
 
+impl<K, V, S> Eq for HashMap<K, V, S>
+where
+    K: Eq + Hash,
+    V: Eq,
+    S: BuildHasher,
+{
+}
+
 //#[derive(Clone)]
 /// Iterator over the keys
 pub struct Keys<'a, K, V> {

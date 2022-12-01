@@ -54,6 +54,7 @@ macro_rules! hashmap {
             #[allow(clippy::let_and_return)]
             let mut _map = $crate::HashMap::with_capacity(_cap);
             $(
+                #[allow(clippy::let_underscore_drop)]
                 let _ = _map.insert($key, $value);
             )*
             _map
