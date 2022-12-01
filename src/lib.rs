@@ -829,7 +829,7 @@ where
     pub fn insert_nocheck(&mut self, k: K, v: V) {
         match &mut self.0 {
             HashMapInt::Map(m) => {
-                m.insert(k, v);
+                m.insert_unique_unchecked(k, v);
             }
             HashMapInt::Vec(m) => m.insert_nocheck(k, v),
             HashMapInt::None => unreachable!(),
