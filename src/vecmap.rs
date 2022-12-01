@@ -24,14 +24,14 @@ impl<K, V, S: Default> Default for VecMap<K, V, S> {
     }
 }
 
-impl<K1, V1, K2, V2> PartialEq<VecMap<K2, V2>> for VecMap<K1, V1>
+impl<K1, V1, K2, V2, S1, S2> PartialEq<VecMap<K2, V2, S2>> for VecMap<K1, V1, S1>
 where
     K1: Eq,
     K2: Eq + Borrow<K1>,
     V1: PartialEq,
     V2: Borrow<V1>,
 {
-    fn eq(&self, other: &VecMap<K2, V2>) -> bool {
+    fn eq(&self, other: &VecMap<K2, V2, S2>) -> bool {
         if self.len() != other.len() {
             return false;
         }
@@ -39,6 +39,13 @@ where
         self.iter()
             .all(|(key, value)| other.get(key).map_or(false, |v| value == v.borrow()))
     }
+}
+
+impl<K, V, S> Eq for VecMap<K, V, S>
+where
+    K: Eq,
+    V: Eq,
+{
 }
 
 impl<K, V> VecMap<K, V, DefaultHashBuilder> {

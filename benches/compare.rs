@@ -1,6 +1,5 @@
 use criterion::*;
-use halfbrown;
-use hashbrown;
+
 use std::collections;
 
 const NAMES: [&str; 162] = [
