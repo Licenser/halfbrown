@@ -39,5 +39,5 @@ jobs:
         run: cargo tarpaulin --out Xml 
       - uses: codecov/codecov-action@v1.0.2
         with:
-          token: ${{secrets.CODECOV_TOKEN}}
+          #token: ${{secrets.CODECOV_TOKEN}} not needed for public repos
           file: ./cobertura.xml     
