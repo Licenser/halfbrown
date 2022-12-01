@@ -1,7 +1,5 @@
 use criterion::*;
 
-use std::collections;
-
 const NAMES: [&str; 162] = [
     // Some data taken from the twitter json
     "contributors",
@@ -174,130 +172,140 @@ const NAMES: [&str; 162] = [
     "volume_ramp_up",
 ];
 
-fn bench(cnt: usize, cap: usize) -> ParameterizedBenchmark<std::vec::Vec<&'static str>> {
-    let data1: Vec<&'static str> = NAMES.iter().cloned().take(cnt).collect();
+#[derive(Default)]
+struct BenchInput {
+    num_inserts: usize,
+    initial_cap: usize,
+}
 
-    ParameterizedBenchmark::new(
-        "halfbrown",
-        move |b, data| {
-            b.iter_batched(
-                || data.clone(),
-                |data| {
-                    let mut m = halfbrown::HashMap::with_capacity(cap);
-                    for e in data {
-                        m.insert(e, e);
-                    }
-                },
-                BatchSize::SmallInput,
-            )
-        },
-        vec![data1],
-    )
-    .with_function("halfbrown(nocheck)", move |b, data| {
+impl std::fmt::Display for BenchInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "inserts={}/capacity={}",
+            self.num_inserts, self.initial_cap
+        )
+    }
+}
+
+impl BenchInput {
+    fn new(num_inserts: usize) -> Self {
+        Self {
+            num_inserts,
+            initial_cap: 0,
+        }
+    }
+
+    fn new_with_capacity(num_inserts: usize, initial_cap: usize) -> Self {
+        Self {
+            num_inserts,
+            initial_cap,
+        }
+    }
+}
+
+fn bench_group(b: &mut Criterion, name: &str, bench_input: BenchInput) {
+    let mut group = b.benchmark_group(name);
+
+    let data1: Vec<&'static str> = NAMES
+        .iter()
+        .cloned()
+        .take(bench_input.num_inserts)
+        .collect();
+    group.bench_function("halfbrown", |b| {
         b.iter_batched(
-            || data.clone(),
+            || data1.clone(),
             |data| {
-                let mut m = halfbrown::HashMap::with_capacity(cap);
+                let mut m = halfbrown::HashMap::with_capacity(bench_input.initial_cap);
+                for e in data {
+                    m.insert(e, e);
+                }
+            },
+            BatchSize::SmallInput,
+        )
+    });
+    group.bench_function("halfbrown(nocheck)", |b| {
+        b.iter_batched(
+            || data1.clone(),
+            |data| {
+                let mut m = halfbrown::HashMap::with_capacity(bench_input.initial_cap);
                 for e in data {
                     m.insert_nocheck(e, e);
                 }
             },
             BatchSize::SmallInput,
         )
-    })
-    .with_function("hashbrown", move |b, data| {
+    });
+    group.bench_function("hashbrown", |b| {
         b.iter_batched(
-            || data.clone(),
+            || data1.clone(),
             |data| {
-                let mut m = hashbrown::HashMap::with_capacity(cap);
+                let mut m = hashbrown::HashMap::with_capacity(bench_input.initial_cap);
                 for e in data {
                     m.insert(e, e);
                 }
             },
             BatchSize::SmallInput,
         )
-    })
-    .with_function("std", move |b, data| {
+    });
+    group.bench_function("std", |b| {
         b.iter_batched(
-            || data.clone(),
+            || data1.clone(),
             |data| {
-                let mut m = collections::HashMap::with_capacity(cap);
+                let mut m = std::collections::HashMap::with_capacity(bench_input.initial_cap);
                 for e in data {
                     m.insert(e, e);
                 }
             },
             BatchSize::SmallInput,
         )
-    })
+    });
+    group.finish();
 }
 
-fn insert_5_capacity(c: &mut Criterion) {
-    c.bench("insert(5) with capacity", bench(5, 5));
+fn bench_capacity(b: &mut Criterion) {
+    bench_group(
+        b,
+        "insert(5) with capacity",
+        BenchInput::new_with_capacity(5, 5),
+    );
+    bench_group(
+        b,
+        "insert(9) with capacity",
+        BenchInput::new_with_capacity(9, 9),
+    );
+    bench_group(
+        b,
+        "insert(17) with capacity",
+        BenchInput::new_with_capacity(17, 17),
+    );
+    bench_group(
+        b,
+        "insert(33) with capacity",
+        BenchInput::new_with_capacity(33, 33),
+    );
+    bench_group(
+        b,
+        "insert(65) with capacity",
+        BenchInput::new_with_capacity(65, 65),
+    );
+    bench_group(
+        b,
+        "insert(129) with capacity",
+        BenchInput::new_with_capacity(129, 129),
+    );
 }
 
-fn insert_9_capacity(c: &mut Criterion) {
-    c.bench("insert(9) with capacity", bench(9, 9));
+fn bench_alloc(b: &mut Criterion) {
+    bench_group(b, "insert(5)", BenchInput::new(5));
+    bench_group(b, "insert(9)", BenchInput::new(9));
+    bench_group(b, "insert(17)", BenchInput::new(17));
+    bench_group(b, "insert(33)", BenchInput::new(33));
+    bench_group(b, "insert(65)", BenchInput::new(65));
+    bench_group(b, "insert(129)", BenchInput::new(129));
 }
 
-fn insert_17_capacity(c: &mut Criterion) {
-    c.bench("insert(17) with capacity", bench(17, 17));
-}
-
-fn insert_33_capacity(c: &mut Criterion) {
-    c.bench("insert(33) with capacity", bench(33, 33));
-}
-
-fn insert_49_capacity(c: &mut Criterion) {
-    c.bench("insert(49) with capacity", bench(49, 49));
-}
-
-fn insert_65_capacity(c: &mut Criterion) {
-    c.bench("insert(65) with capacity", bench(65, 65));
-}
-
-fn insert_129_capacity(c: &mut Criterion) {
-    c.bench("insert(129) with capacity", bench(129, 128));
-}
-
-criterion_group!(
-    capacity,
-    insert_5_capacity,
-    insert_9_capacity,
-    insert_17_capacity,
-    insert_33_capacity,
-    insert_49_capacity,
-    insert_65_capacity,
-    insert_129_capacity
-);
-
-fn insert_5(c: &mut Criterion) {
-    c.bench("insert(5)", bench(5, 0));
-}
-
-fn insert_9(c: &mut Criterion) {
-    c.bench("insert(9)", bench(9, 0));
-}
-
-fn insert_17(c: &mut Criterion) {
-    c.bench("insert(17)", bench(17, 0));
-}
-
-fn insert_33(c: &mut Criterion) {
-    c.bench("insert(33)", bench(33, 0));
-}
-
-fn insert_49(c: &mut Criterion) {
-    c.bench("insert(49)", bench(49, 0));
-}
-
-fn insert_65(c: &mut Criterion) {
-    c.bench("insert(65)", bench(65, 0));
-}
-
-fn insert_129(c: &mut Criterion) {
-    c.bench("insert(129)", bench(129, 0));
-}
-
-criterion_group!(alloc, insert_5, insert_9, insert_17, insert_33, insert_49, insert_65, insert_129);
+criterion_group!(capacity, bench_capacity);
+criterion_group!(alloc, bench_alloc);
 
 criterion_main!(capacity, alloc);
