@@ -5,7 +5,7 @@ edition = "2018"
 license = "Apache-2.0/MIT"
 name = "halfbrown"
 repository = "https://github.com/Licenser/halfbrown"
-version = "0.1.16"
+version = "0.1.17"
 
 [dependencies]
 fxhash = { version = "0.2", optional = true }
