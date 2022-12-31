@@ -8,8 +8,8 @@ repository = "https://github.com/Licenser/halfbrown"
 version = "0.1.18"
 
 [dependencies]
-fxhash = { version = "0.2", optional = true }
 hashbrown = "0.13"
+rustc-hash = { version = "1.1", optional = true }
 serde = { version = "1", default-features = false, optional = true }
 
 [dev-dependencies]
@@ -18,6 +18,7 @@ criterion = "0.4"
 
 [features]
 default = []
+fxhash = ["rustc-hash"]
 
 [[bench]]
 harness = false

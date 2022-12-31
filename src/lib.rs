@@ -52,7 +52,8 @@ use std::fmt::{self, Debug};
 use std::ops::Index;
 
 #[cfg(feature = "fxhash")]
-pub use fxhash::FxBuildHasher as DefaultHashBuilder;
+/// Default hasher
+pub type DefaultHashBuilder = core::hash::BuildHasherDefault<rustc_hash::FxHasher>;
 #[cfg(not(feature = "fxhash"))]
 pub use hashbrown::hash_map::DefaultHashBuilder;
 
