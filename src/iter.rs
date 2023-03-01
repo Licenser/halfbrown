@@ -1,6 +1,6 @@
 use super::{HashMap, HashMapInt};
 use core::hash::{BuildHasher, Hash};
-use std::iter::{FromIterator, IntoIterator};
+use std::iter::{FromIterator, FusedIterator, IntoIterator};
 
 /// Iterator over the key value pairs of a Halfbrown map
 #[derive(Debug)]
@@ -18,6 +18,7 @@ impl<'a, K, V> From<IterInt<'a, K, V>> for Iter<'a, K, V> {
         Self(i)
     }
 }
+
 #[derive(Debug)]
 pub(crate) enum IterInt<'a, K, V> {
     Map(hashbrown::hash_map::Iter<'a, K, V>),
@@ -58,12 +59,26 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
     }
 }
 
+impl<'a, K, V> ExactSizeIterator for Iter<'a, K, V> {
+    #[inline]
+    fn len(&self) -> usize {
+        match &self.0 {
+            IterInt::Map(m) => m.len(),
+            IterInt::Vec(v) => v.len(),
+        }
+    }
+}
+
+impl<'a, K, V> FusedIterator for Iter<'a, K, V> {}
+
 /// Into iterator for a Halfbrown map
 pub struct IntoIter<K, V>(IntoIterInt<K, V>);
+
 enum IntoIterInt<K, V> {
     Map(hashbrown::hash_map::IntoIter<K, V>),
     Vec(std::vec::IntoIter<(K, V)>),
 }
+
 impl<K, V> IntoIter<K, V> {
     /// The length of this iterator
     #[must_use]
@@ -97,6 +112,18 @@ impl<K, V> Iterator for IntoIter<K, V> {
         }
     }
 }
+
+impl<K, V> ExactSizeIterator for IntoIter<K, V> {
+    #[inline]
+    fn len(&self) -> usize {
+        match &self.0 {
+            IntoIterInt::Map(i) => i.len(),
+            IntoIterInt::Vec(i) => i.len(),
+        }
+    }
+}
+
+impl<K, V> FusedIterator for IntoIter<K, V> {}
 
 impl<K, V, S> IntoIterator for HashMap<K, V, S> {
     type Item = (K, V);
@@ -170,3 +197,15 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
         }
     }
 }
+
+impl<'a, K, V> ExactSizeIterator for IterMut<'a, K, V> {
+    #[inline]
+    fn len(&self) -> usize {
+        match &self.0 {
+            IterMutInt::Map(i) => i.len(),
+            IterMutInt::Vec(i) => i.len(),
+        }
+    }
+}
+
+impl<'a, K, V> FusedIterator for IterMut<'a, K, V> {}
