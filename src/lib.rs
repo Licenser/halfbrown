@@ -59,21 +59,22 @@ pub use hashbrown::hash_map::DefaultHashBuilder;
 
 /// Maximum nymber of elements before the representaiton is swapped from
 /// Vec to `HashMap`
-pub const VEC_LIMIT_UPPER: usize = 32;
 
 /// `HashMap` implementation that alternates between a vector
 /// and a hashmap to improve performance for low key counts.
 #[derive(Clone)]
-pub struct HashMap<K, V, S = DefaultHashBuilder>(HashMapInt<K, V, S>);
+pub struct HashMap<K, V, S = DefaultHashBuilder, const VEC_LIMIT_UPPER: usize = 32>(
+    HashMapInt<K, V, S>,
+);
 
-impl<K, V, S: Default> Default for HashMap<K, V, S> {
+impl<K, V, S: Default, const VEC_LIMIT_UPPER: usize> Default for HashMap<K, V, S, VEC_LIMIT_UPPER> {
     #[inline]
     fn default() -> Self {
         Self(HashMapInt::default())
     }
 }
 
-impl<K, V, S> Debug for HashMap<K, V, S>
+impl<K, V, S, const VEC_LIMIT_UPPER: usize> Debug for HashMap<K, V, S, VEC_LIMIT_UPPER>
 where
     K: Debug,
     V: Debug,
@@ -97,7 +98,7 @@ impl<K, V, S: Default> Default for HashMapInt<K, V, S> {
     }
 }
 
-impl<K, V> HashMap<K, V, DefaultHashBuilder> {
+impl<K, V, const VEC_LIMIT_UPPER: usize> HashMap<K, V, DefaultHashBuilder, VEC_LIMIT_UPPER> {
     /// Creates an empty `HashMap`.
     ///
     /// The hash map is initially created with a capacity of 0, so it will not allocate until it
@@ -112,7 +113,7 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     #[inline]
     #[must_use]
     pub fn new() -> Self {
-        Self(HashMapInt::Vec(VecMap::new()))
+        Self::default()
     }
     /// Creates an empty `HashMap` with the specified capacity.
     ///
@@ -155,7 +156,7 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     }
 }
 
-impl<K, V, S> HashMap<K, V, S> {
+impl<K, V, S, const VEC_LIMIT_UPPER: usize> HashMap<K, V, S, VEC_LIMIT_UPPER> {
     /// Creates an empty `HashMap` which will use the given hash builder to hash
     /// keys.
     ///
@@ -473,7 +474,7 @@ impl<K, V, S> HashMap<K, V, S> {
     }
 }
 
-impl<K, V, S> HashMap<K, V, S>
+impl<K, V, S, const VEC_LIMIT_UPPER: usize> HashMap<K, V, S, VEC_LIMIT_UPPER>
 where
     K: Eq + Hash,
     S: BuildHasher,
@@ -858,7 +859,7 @@ where
     }
 }
 
-impl<K, Q, V, S> Index<&Q> for HashMap<K, V, S>
+impl<K, Q, V, S, const VEC_LIMIT_UPPER: usize> Index<&Q> for HashMap<K, V, S, VEC_LIMIT_UPPER>
 where
     K: Eq + Hash + Borrow<Q>,
     Q: Eq + Hash + ?Sized,
@@ -877,7 +878,7 @@ where
     }
 }
 
-impl<K, V, S> HashMap<K, V, S>
+impl<K, V, S, const VEC_LIMIT_UPPER: usize> HashMap<K, V, S, VEC_LIMIT_UPPER>
 where
     S: BuildHasher,
     K: Eq + Hash,
@@ -947,13 +948,14 @@ where
     }
 }
 
-impl<K, V, S, S1> PartialEq<HashMap<K, V, S1>> for HashMap<K, V, S>
+impl<K, V, S, S1, const VEC_LIMIT_UPPER1: usize, const VEC_LIMIT_UPPER2: usize>
+    PartialEq<HashMap<K, V, S1, VEC_LIMIT_UPPER1>> for HashMap<K, V, S, VEC_LIMIT_UPPER2>
 where
     K: Eq + Hash,
     V: PartialEq,
     S1: BuildHasher,
 {
-    fn eq(&self, other: &HashMap<K, V, S1>) -> bool {
+    fn eq(&self, other: &HashMap<K, V, S1, VEC_LIMIT_UPPER1>) -> bool {
         if self.len() != other.len() {
             return false;
         }
@@ -963,7 +965,7 @@ where
     }
 }
 
-impl<K, V, S> Eq for HashMap<K, V, S>
+impl<K, V, S, const VEC_LIMIT_UPPER: usize> Eq for HashMap<K, V, S, VEC_LIMIT_UPPER>
 where
     K: Eq + Hash,
     V: Eq,
@@ -1057,7 +1059,7 @@ mod tests {
     use super::*;
     #[test]
     fn scale_up() {
-        let mut v = HashMap::new();
+        let mut v = HashMap::<_, _, _, 32>::new();
         assert!(v.is_vec());
         for i in 1..33 {
             // 32 entries
@@ -1077,7 +1079,7 @@ mod tests {
 
     #[test]
     fn add_remove() {
-        let mut v = HashMap::new();
+        let mut v = HashMap::<i32, i32, _, 32>::new();
         v.insert(1, 1);
         v.insert(2, 2);
         v.insert(3, 3);
