@@ -52,9 +52,9 @@ macro_rules! hashmap {
         {
             let _cap = hashmap!(@count $($key),*);
             #[allow(clippy::let_and_return)]
-            let mut _map = $crate::HashMap::with_capacity(_cap);
+            let mut _map: $crate::HashMap<_,_> = $crate::HashMap::with_capacity(_cap);
             $(
-                #[allow(clippy::let_underscore_drop)]
+                #[allow(let_underscore_drop)]
                 let _ = _map.insert($key, $value);
             )*
             _map

@@ -50,11 +50,6 @@ where
 
 impl<K, V> VecMap<K, V, DefaultHashBuilder> {
     #[inline]
-    pub(crate) fn new() -> Self {
-        Self::default()
-    }
-
-    #[inline]
     pub(crate) fn with_capacity(capacity: usize) -> Self {
         Self {
             v: Vec::with_capacity(capacity),

@@ -219,8 +219,8 @@ where
 impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for OccupiedEntry<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
-            OccupiedEntryInt::Map(m) => write!(f, "{m:?}"),
-            OccupiedEntryInt::Vec(m) => write!(f, "{m:?}"),
+            OccupiedEntryInt::Map(m) => m.fmt(f),
+            OccupiedEntryInt::Vec(m) => m.fmt(f),
         }
     }
 }
@@ -241,8 +241,8 @@ enum VacantEntryInt<'a, K, V, S> {
 impl<K: fmt::Debug, V, S> fmt::Debug for VacantEntry<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
-            VacantEntryInt::Map(m) => write!(f, "{m:?}"),
-            VacantEntryInt::Vec(m) => write!(f, "{m:?}"),
+            VacantEntryInt::Map(m) => m.fmt(f),
+            VacantEntryInt::Vec(m) => m.fmt(f),
         }
     }
 }
