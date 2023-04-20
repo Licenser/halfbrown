@@ -1,4 +1,4 @@
-use super::{HashMap, HashMapInt};
+use super::{HashMapInt, SizedHashMap};
 use core::hash::{BuildHasher, Hash};
 use std::iter::{FromIterator, FusedIterator, IntoIterator};
 
@@ -125,7 +125,7 @@ impl<K, V> ExactSizeIterator for IntoIter<K, V> {
 
 impl<K, V> FusedIterator for IntoIter<K, V> {}
 
-impl<K, V, S> IntoIterator for HashMap<K, V, S> {
+impl<K, V, S> IntoIterator for SizedHashMap<K, V, S> {
     type Item = (K, V);
     type IntoIter = IntoIter<K, V>;
 
@@ -139,7 +139,7 @@ impl<K, V, S> IntoIterator for HashMap<K, V, S> {
     }
 }
 
-impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S> {
+impl<'a, K, V, S> IntoIterator for &'a SizedHashMap<K, V, S> {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;
 
@@ -149,7 +149,7 @@ impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S> {
     }
 }
 
-impl<K, V, S> FromIterator<(K, V)> for HashMap<K, V, S>
+impl<K, V, S> FromIterator<(K, V)> for SizedHashMap<K, V, S>
 where
     K: Eq + Hash,
     S: BuildHasher + Default,
