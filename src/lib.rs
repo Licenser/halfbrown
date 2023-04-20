@@ -57,24 +57,31 @@ pub type DefaultHashBuilder = core::hash::BuildHasherDefault<rustc_hash::FxHashe
 #[cfg(not(feature = "fxhash"))]
 pub use hashbrown::hash_map::DefaultHashBuilder;
 
+/// `SizedHashMap` implementation that alternates between a vector
+/// and a hashmap to improve performance for low key counts.
+/// With a standard upper vector limit of 32
+pub type HashMap<K, V, S = DefaultHashBuilder> = SizedHashMap<K, V, S, 32>;
+
 /// Maximum nymber of elements before the representaiton is swapped from
 /// Vec to `HashMap`
 
-/// `HashMap` implementation that alternates between a vector
-/// and a hashmap to improve performance for low key counts.
+/// `SizedHashMap` implementation that alternates between a vector
+/// and a hashmap to improve performance for low key counts. With a configurable upper vector limit
 #[derive(Clone)]
-pub struct HashMap<K, V, S = DefaultHashBuilder, const VEC_LIMIT_UPPER: usize = 32>(
+pub struct SizedHashMap<K, V, S = DefaultHashBuilder, const VEC_LIMIT_UPPER: usize = 32>(
     HashMapInt<K, V, S>,
 );
 
-impl<K, V, S: Default, const VEC_LIMIT_UPPER: usize> Default for HashMap<K, V, S, VEC_LIMIT_UPPER> {
+impl<K, V, S: Default, const VEC_LIMIT_UPPER: usize> Default
+    for SizedHashMap<K, V, S, VEC_LIMIT_UPPER>
+{
     #[inline]
     fn default() -> Self {
         Self(HashMapInt::default())
     }
 }
 
-impl<K, V, S, const VEC_LIMIT_UPPER: usize> Debug for HashMap<K, V, S, VEC_LIMIT_UPPER>
+impl<K, V, S, const VEC_LIMIT_UPPER: usize> Debug for SizedHashMap<K, V, S, VEC_LIMIT_UPPER>
 where
     K: Debug,
     V: Debug,
@@ -98,7 +105,7 @@ impl<K, V, S: Default> Default for HashMapInt<K, V, S> {
     }
 }
 
-impl<K, V, const VEC_LIMIT_UPPER: usize> HashMap<K, V, DefaultHashBuilder, VEC_LIMIT_UPPER> {
+impl<K, V, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, DefaultHashBuilder, VEC_LIMIT_UPPER> {
     /// Creates an empty `HashMap`.
     ///
     /// The hash map is initially created with a capacity of 0, so it will not allocate until it
@@ -156,7 +163,7 @@ impl<K, V, const VEC_LIMIT_UPPER: usize> HashMap<K, V, DefaultHashBuilder, VEC_L
     }
 }
 
-impl<K, V, S, const VEC_LIMIT_UPPER: usize> HashMap<K, V, S, VEC_LIMIT_UPPER> {
+impl<K, V, S, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, S, VEC_LIMIT_UPPER> {
     /// Creates an empty `HashMap` which will use the given hash builder to hash
     /// keys.
     ///
@@ -474,7 +481,7 @@ impl<K, V, S, const VEC_LIMIT_UPPER: usize> HashMap<K, V, S, VEC_LIMIT_UPPER> {
     }
 }
 
-impl<K, V, S, const VEC_LIMIT_UPPER: usize> HashMap<K, V, S, VEC_LIMIT_UPPER>
+impl<K, V, S, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, S, VEC_LIMIT_UPPER>
 where
     K: Eq + Hash,
     S: BuildHasher,
@@ -859,7 +866,7 @@ where
     }
 }
 
-impl<K, Q, V, S, const VEC_LIMIT_UPPER: usize> Index<&Q> for HashMap<K, V, S, VEC_LIMIT_UPPER>
+impl<K, Q, V, S, const VEC_LIMIT_UPPER: usize> Index<&Q> for SizedHashMap<K, V, S, VEC_LIMIT_UPPER>
 where
     K: Eq + Hash + Borrow<Q>,
     Q: Eq + Hash + ?Sized,
@@ -878,7 +885,7 @@ where
     }
 }
 
-impl<K, V, S, const VEC_LIMIT_UPPER: usize> HashMap<K, V, S, VEC_LIMIT_UPPER>
+impl<K, V, S, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, S, VEC_LIMIT_UPPER>
 where
     S: BuildHasher,
     K: Eq + Hash,
@@ -949,13 +956,13 @@ where
 }
 
 impl<K, V, S, S1, const VEC_LIMIT_UPPER1: usize, const VEC_LIMIT_UPPER2: usize>
-    PartialEq<HashMap<K, V, S1, VEC_LIMIT_UPPER1>> for HashMap<K, V, S, VEC_LIMIT_UPPER2>
+    PartialEq<SizedHashMap<K, V, S1, VEC_LIMIT_UPPER1>> for SizedHashMap<K, V, S, VEC_LIMIT_UPPER2>
 where
     K: Eq + Hash,
     V: PartialEq,
     S1: BuildHasher,
 {
-    fn eq(&self, other: &HashMap<K, V, S1, VEC_LIMIT_UPPER1>) -> bool {
+    fn eq(&self, other: &SizedHashMap<K, V, S1, VEC_LIMIT_UPPER1>) -> bool {
         if self.len() != other.len() {
             return false;
         }
@@ -965,7 +972,7 @@ where
     }
 }
 
-impl<K, V, S, const VEC_LIMIT_UPPER: usize> Eq for HashMap<K, V, S, VEC_LIMIT_UPPER>
+impl<K, V, S, const VEC_LIMIT_UPPER: usize> Eq for SizedHashMap<K, V, S, VEC_LIMIT_UPPER>
 where
     K: Eq + Hash,
     V: Eq,
@@ -1059,7 +1066,7 @@ mod tests {
     use super::*;
     #[test]
     fn scale_up() {
-        let mut v = HashMap::<_, _, _, 32>::new();
+        let mut v = SizedHashMap::<_, _, _, 32>::new();
         assert!(v.is_vec());
         for i in 1..33 {
             // 32 entries
@@ -1072,14 +1079,14 @@ mod tests {
 
     #[test]
     fn str_key() {
-        let mut v: HashMap<String, u32> = HashMap::new();
+        let mut v: SizedHashMap<String, u32> = SizedHashMap::new();
         v.insert("hello".to_owned(), 42);
         assert_eq!(v["hello"], 42);
     }
 
     #[test]
     fn add_remove() {
-        let mut v = HashMap::<i32, i32, _, 32>::new();
+        let mut v = SizedHashMap::<i32, i32, _, 32>::new();
         v.insert(1, 1);
         v.insert(2, 2);
         v.insert(3, 3);

@@ -70,7 +70,7 @@ pub fn __id<T>(t: T) -> T {
 
 #[test]
 fn test_hashmap() {
-    use crate::HashMap;
+    use crate::SizedHashMap;
     let names = hashmap! {
         1 => "one",
         2 => "two",
@@ -80,7 +80,7 @@ fn test_hashmap() {
     assert_eq!(names[&2], "two");
     assert_eq!(names.get(&3), None);
 
-    let empty: HashMap<i32, i32> = hashmap! {};
+    let empty: SizedHashMap<i32, i32> = hashmap! {};
     assert_eq!(empty.len(), 0);
 
     let _nested_compiles = hashmap! {
