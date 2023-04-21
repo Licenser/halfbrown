@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      
+
 jobs:
   clippy_check:
     runs-on: ubuntu-latest
@@ -36,7 +36,7 @@ jobs:
       - name: install tarpaulin
         run: cargo install cargo-tarpaulin -f
       - name: run tarpaulin
-        run: cargo tarpaulin --out Xml 
+        run: cargo tarpaulin --out Xml
       - uses: codecov/codecov-action@v3
         with:
           #token: ${{secrets.CODECOV_TOKEN}} not needed for public repos
