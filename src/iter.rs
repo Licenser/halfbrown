@@ -1,4 +1,5 @@
 use super::{HashMapInt, SizedHashMap};
+use crate::vectypes::VecIntoIter;
 use core::hash::{BuildHasher, Hash};
 use std::iter::{FromIterator, FusedIterator, IntoIterator};
 
@@ -72,14 +73,14 @@ impl<'a, K, V> ExactSizeIterator for Iter<'a, K, V> {
 impl<'a, K, V> FusedIterator for Iter<'a, K, V> {}
 
 /// Into iterator for a Halfbrown map
-pub struct IntoIter<K, V>(IntoIterInt<K, V>);
+pub struct IntoIter<K, V, const N: usize>(IntoIterInt<K, V, N>);
 
-enum IntoIterInt<K, V> {
+enum IntoIterInt<K, V, const N: usize> {
     Map(hashbrown::hash_map::IntoIter<K, V>),
-    Vec(std::vec::IntoIter<(K, V)>),
+    Vec(VecIntoIter<(K, V), N>),
 }
 
-impl<K, V> IntoIter<K, V> {
+impl<K, V, const N: usize> IntoIter<K, V, N> {
     /// The length of this iterator
     #[must_use]
     pub fn len(&self) -> usize {
@@ -95,7 +96,7 @@ impl<K, V> IntoIter<K, V> {
     }
 }
 
-impl<K, V> Iterator for IntoIter<K, V> {
+impl<K, V, const N: usize> Iterator for IntoIter<K, V, N> {
     type Item = (K, V);
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -113,7 +114,7 @@ impl<K, V> Iterator for IntoIter<K, V> {
     }
 }
 
-impl<K, V> ExactSizeIterator for IntoIter<K, V> {
+impl<K, V, const N: usize> ExactSizeIterator for IntoIter<K, V, N> {
     #[inline]
     fn len(&self) -> usize {
         match &self.0 {
@@ -123,14 +124,14 @@ impl<K, V> ExactSizeIterator for IntoIter<K, V> {
     }
 }
 
-impl<K, V> FusedIterator for IntoIter<K, V> {}
+impl<K, V, const N: usize> FusedIterator for IntoIter<K, V, N> {}
 
-impl<K, V, S> IntoIterator for SizedHashMap<K, V, S> {
+impl<K, V, const N: usize, S> IntoIterator for SizedHashMap<K, V, S, N> {
     type Item = (K, V);
-    type IntoIter = IntoIter<K, V>;
+    type IntoIter = IntoIter<K, V, N>;
 
     #[inline]
-    fn into_iter(self) -> IntoIter<K, V> {
+    fn into_iter(self) -> IntoIter<K, V, N> {
         match self.0 {
             HashMapInt::Map(m) => IntoIter(IntoIterInt::Map(m.into_iter())),
             HashMapInt::Vec(m) => IntoIter(IntoIterInt::Vec(m.into_iter())),

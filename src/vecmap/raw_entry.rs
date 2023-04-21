@@ -9,8 +9,8 @@ use std::mem;
 /// See the [`VecMap::raw_entry_mut`] docs for usage examples.
 ///
 /// [`VecMap::raw_entry_mut`]: struct.VecMap.html#method.raw_entry_mut
-pub struct RawEntryBuilderMut<'a, K, V, S> {
-    pub(crate) map: &'a mut VecMap<K, V, S>,
+pub struct RawEntryBuilderMut<'a, K, V, const N: usize, S> {
+    pub(crate) map: &'a mut VecMap<K, V, N, S>,
 }
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
@@ -24,30 +24,30 @@ pub struct RawEntryBuilderMut<'a, K, V, S> {
 /// [`Entry`]: enum.Entry.html
 /// [`raw_entry_mut`]: struct.VecMap.html#method.raw_entry_mut
 /// [`RawEntryBuilderMut`]: struct.RawEntryBuilderMut.html
-pub enum RawEntryMut<'a, K, V, S> {
+pub enum RawEntryMut<'a, K, V, const N: usize, S> {
     /// An occupied entry.
-    Occupied(RawOccupiedEntryMut<'a, K, V, S>),
+    Occupied(RawOccupiedEntryMut<'a, K, V, N, S>),
     /// A vacant entry.
-    Vacant(RawVacantEntryMut<'a, K, V, S>),
+    Vacant(RawVacantEntryMut<'a, K, V, N, S>),
 }
 
 /// A view into an occupied entry in a `VecMap`.
 /// It is part of the [`RawEntryMut`] enum.
 ///
 /// [`RawEntryMut`]: enum.RawEntryMut.html
-pub struct RawOccupiedEntryMut<'a, K, V, S> {
+pub struct RawOccupiedEntryMut<'a, K, V, const N: usize, S> {
     idx: usize,
-    map: &'a mut VecMap<K, V, S>,
+    map: &'a mut VecMap<K, V, N, S>,
 }
 
-unsafe impl<K, V, S> Send for RawOccupiedEntryMut<'_, K, V, S>
+unsafe impl<K, V, const N: usize, S> Send for RawOccupiedEntryMut<'_, K, V, N, S>
 where
     K: Send,
     V: Send,
     S: Send,
 {
 }
-unsafe impl<K, V, S> Sync for RawOccupiedEntryMut<'_, K, V, S>
+unsafe impl<K, V, const N: usize, S> Sync for RawOccupiedEntryMut<'_, K, V, N, S>
 where
     K: Sync,
     V: Sync,
@@ -59,8 +59,8 @@ where
 /// It is part of the [`RawEntryMut`] enum.
 ///
 /// [`RawEntryMut`]: enum.RawEntryMut.html
-pub struct RawVacantEntryMut<'a, K, V, S> {
-    map: &'a mut VecMap<K, V, S>,
+pub struct RawVacantEntryMut<'a, K, V, const N: usize, S> {
+    map: &'a mut VecMap<K, V, N, S>,
 }
 
 /// A builder for computing where in a [`VecMap`] a key-value pair would be stored.
@@ -68,15 +68,15 @@ pub struct RawVacantEntryMut<'a, K, V, S> {
 /// See the [`VecMap::raw_entry`] docs for usage examples.
 ///
 /// [`VecMap::raw_entry`]: struct.VecMap.html#method.raw_entry
-pub struct RawEntryBuilder<'map, K, V, S> {
-    pub(crate) map: &'map VecMap<K, V, S>,
+pub struct RawEntryBuilder<'map, K, V, const N: usize, S> {
+    pub(crate) map: &'map VecMap<K, V, N, S>,
 }
 
-impl<'map, K, V, S> RawEntryBuilderMut<'map, K, V, S> {
+impl<'map, K, V, const N: usize, S> RawEntryBuilderMut<'map, K, V, N, S> {
     /// Creates a `RawEntryMut` from the given key.
     #[inline]
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_key<Q>(self, k: &Q) -> RawEntryMut<'map, K, V, S>
+    pub fn from_key<Q>(self, k: &Q) -> RawEntryMut<'map, K, V, N, S>
     where
         K: Borrow<Q>,
         Q: Eq + ?Sized,
@@ -87,7 +87,7 @@ impl<'map, K, V, S> RawEntryBuilderMut<'map, K, V, S> {
     /// Creates a `RawEntryMut` from the given key and its hash.
     #[inline]
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_key_hashed_nocheck<Q>(self, hash: u64, k: &Q) -> RawEntryMut<'map, K, V, S>
+    pub fn from_key_hashed_nocheck<Q>(self, hash: u64, k: &Q) -> RawEntryMut<'map, K, V, N, S>
     where
         K: Borrow<Q>,
         Q: Eq + ?Sized,
@@ -96,13 +96,13 @@ impl<'map, K, V, S> RawEntryBuilderMut<'map, K, V, S> {
     }
 }
 
-impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S> {
+impl<'a, K, V, const N: usize, S> RawEntryBuilderMut<'a, K, V, N, S> {
     /// Creates a `RawEntryMut` from the given hash.
     /// Note for the vec mapo hash has no effect it is only
     /// provided for convinience reasons
     #[inline]
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_hash<F>(self, _hash: u64, is_match: F) -> RawEntryMut<'a, K, V, S>
+    pub fn from_hash<F>(self, _hash: u64, is_match: F) -> RawEntryMut<'a, K, V, N, S>
     where
         for<'b> F: FnMut(&'b K) -> bool,
     {
@@ -110,7 +110,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S> {
     }
 
     #[inline]
-    fn search<F>(self, mut is_match: F) -> RawEntryMut<'a, K, V, S>
+    fn search<F>(self, mut is_match: F) -> RawEntryMut<'a, K, V, N, S>
     where
         for<'b> F: FnMut(&'b K) -> bool,
     {
@@ -123,7 +123,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S> {
     }
 }
 
-impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S> {
+impl<'a, K, V, const N: usize, S> RawEntryBuilder<'a, K, V, N, S> {
     /// Access an entry by key.
     #[inline]
     #[allow(clippy::wrong_self_convention)]
@@ -171,7 +171,7 @@ impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S> {
     }
 }
 
-impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
+impl<'a, K, V, const N: usize, S> RawEntryMut<'a, K, V, N, S> {
     /// Sets the value of the entry, and returns a `RawOccupiedEntryMut`.
     ///
     /// # Examples
@@ -185,7 +185,7 @@ impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
     /// assert_eq!(entry.remove_entry(), ("horseyland", 37));
     /// ```
     #[inline]
-    pub fn insert(self, key: K, value: V) -> RawOccupiedEntryMut<'a, K, V, S> {
+    pub fn insert(self, key: K, value: V) -> RawOccupiedEntryMut<'a, K, V, N, S> {
         match self {
             RawEntryMut::Occupied(mut entry) => {
                 entry.insert(value);
@@ -289,7 +289,7 @@ impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
     }
 }
 
-impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
+impl<'a, K, V, const N: usize, S> RawOccupiedEntryMut<'a, K, V, N, S> {
     /// Gets a reference to the key in the entry.
     #[inline]
     pub fn key(&self) -> &K {
@@ -375,7 +375,7 @@ impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
     }
 }
 
-impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
+impl<'a, K, V, const N: usize, S> RawVacantEntryMut<'a, K, V, N, S> {
     /// Sets the value of the entry with the `VacantEntry`'s key,
     /// and returns a mutable reference to it.
     #[inline]
@@ -408,19 +408,19 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
     }
 
     #[inline]
-    fn insert_entry(self, key: K, value: V) -> RawOccupiedEntryMut<'a, K, V, S> {
+    fn insert_entry(self, key: K, value: V) -> RawOccupiedEntryMut<'a, K, V, N, S> {
         let idx = self.map.insert_idx(key, value);
         RawOccupiedEntryMut { idx, map: self.map }
     }
 }
 
-impl<K, V, S> Debug for RawEntryBuilderMut<'_, K, V, S> {
+impl<K, V, const N: usize, S> Debug for RawEntryBuilderMut<'_, K, V, N, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawEntryBuilder").finish()
     }
 }
 
-impl<K, V, S> Debug for RawEntryMut<'_, K, V, S>
+impl<K, V, const N: usize, S> Debug for RawEntryMut<'_, K, V, N, S>
 where
     K: Debug,
     V: Debug,
@@ -433,7 +433,7 @@ where
     }
 }
 
-impl<K: Debug, V: Debug, S> Debug for RawOccupiedEntryMut<'_, K, V, S> {
+impl<K: Debug, V: Debug, const N: usize, S> Debug for RawOccupiedEntryMut<'_, K, V, N, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawOccupiedEntryMut")
             .field("key", self.key())
@@ -442,13 +442,13 @@ impl<K: Debug, V: Debug, S> Debug for RawOccupiedEntryMut<'_, K, V, S> {
     }
 }
 
-impl<K, V, S> Debug for RawVacantEntryMut<'_, K, V, S> {
+impl<K, V, const N: usize, S> Debug for RawVacantEntryMut<'_, K, V, N, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawVacantEntryMut").finish()
     }
 }
 
-impl<K, V, S> Debug for RawEntryBuilder<'_, K, V, S> {
+impl<K, V, const N: usize, S> Debug for RawEntryBuilder<'_, K, V, N, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawEntryBuilder").finish()
     }

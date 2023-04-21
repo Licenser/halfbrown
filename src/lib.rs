@@ -1,6 +1,6 @@
 //! Halfbrown is a hashmap implementation that provides
 //! high performance for both small and large maps by
-//! dymaically switching between different backend.
+//! dynamically switching between different backend.
 //!
 //! The basic idea is that hash maps are expensive to
 //! insert and lookup for small numbers of entries
@@ -20,15 +20,15 @@
 
 #![warn(unused_extern_crates)]
 #![cfg_attr(
-    feature = "cargo-clippy",
-    deny(
-        clippy::all,
-        clippy::unwrap_used,
-        clippy::unnecessary_unwrap,
-        clippy::pedantic
-    ),
-    // We might want to revisit inline_always
-    allow(clippy::module_name_repetitions, clippy::inline_always)
+feature = "cargo-clippy",
+deny(
+clippy::all,
+clippy::unwrap_used,
+clippy::unnecessary_unwrap,
+clippy::pedantic
+),
+// We might want to revisit inline_always
+allow(clippy::module_name_repetitions, clippy::inline_always)
 )]
 #![deny(missing_docs)]
 
@@ -39,6 +39,7 @@ mod raw_entry;
 #[cfg(feature = "serde")]
 mod serde;
 mod vecmap;
+mod vectypes;
 
 pub use crate::entry::*;
 pub use crate::iter::*;
@@ -54,6 +55,8 @@ use std::ops::Index;
 #[cfg(feature = "fxhash")]
 /// Default hasher
 pub type DefaultHashBuilder = core::hash::BuildHasherDefault<rustc_hash::FxHasher>;
+
+use crate::vectypes::VecDrain;
 #[cfg(not(feature = "fxhash"))]
 pub use hashbrown::hash_map::DefaultHashBuilder;
 
@@ -69,7 +72,7 @@ pub type HashMap<K, V, S = DefaultHashBuilder> = SizedHashMap<K, V, S, 32>;
 /// and a hashmap to improve performance for low key counts. With a configurable upper vector limit
 #[derive(Clone)]
 pub struct SizedHashMap<K, V, S = DefaultHashBuilder, const VEC_LIMIT_UPPER: usize = 32>(
-    HashMapInt<K, V, S>,
+    HashMapInt<K, V, VEC_LIMIT_UPPER, S>,
 );
 
 impl<K, V, S: Default, const VEC_LIMIT_UPPER: usize> Default
@@ -92,13 +95,13 @@ where
 }
 
 #[derive(Clone)]
-enum HashMapInt<K, V, S = DefaultHashBuilder> {
+enum HashMapInt<K, V, const N: usize, S = DefaultHashBuilder> {
     Map(HashBrown<K, V, S>),
-    Vec(VecMap<K, V, S>),
+    Vec(VecMap<K, V, N, S>),
     None,
 }
 
-impl<K, V, S: Default> Default for HashMapInt<K, V, S> {
+impl<K, V, const N: usize, S: Default> Default for HashMapInt<K, V, N, S> {
     #[inline]
     fn default() -> Self {
         Self::Vec(VecMap::default())
@@ -450,7 +453,7 @@ impl<K, V, S, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, S, VEC_LIMIT_UPPE
     /// assert!(a.is_empty());
     /// ```
     #[inline]
-    pub fn drain(&mut self) -> Drain<K, V> {
+    pub fn drain(&mut self) -> Drain<K, V, VEC_LIMIT_UPPER> {
         match &mut self.0 {
             HashMapInt::Map(m) => Drain(DrainInt::Map(m.drain())),
             HashMapInt::Vec(m) => Drain(DrainInt::Vec(m.drain())),
@@ -581,7 +584,15 @@ where
     /// assert_eq!(letters[&'u'], 1);
     /// assert_eq!(letters.get(&'y'), None);
     /// ```
-    pub fn entry(&mut self, key: K) -> Entry<K, V, S> {
+    pub fn entry(&mut self, key: K) -> Entry<K, V, VEC_LIMIT_UPPER, S>
+    where
+        S: Default,
+    {
+        if let HashMapInt::Vec(m) = &self.0 {
+            if m.len() >= VEC_LIMIT_UPPER {
+                self.swap_backend_to_map();
+            }
+        }
         match &mut self.0 {
             HashMapInt::Map(m) => m.entry(key).into(),
             HashMapInt::Vec(m) => m.entry(key).into(),
@@ -673,7 +684,6 @@ where
     /// }
     /// assert_eq!(map[&1], "b");
     /// ```
-
     #[inline]
     pub fn get_mut<Q>(&mut self, k: &Q) -> Option<&mut V>
     where
@@ -686,7 +696,24 @@ where
             HashMapInt::None => unreachable!(),
         }
     }
-
+    fn swap_backend_to_map(&mut self) -> &mut hashbrown::HashMap<K, V, S>
+    where
+        S: Default,
+    {
+        self.0 = match std::mem::replace(&mut self.0, HashMapInt::None) {
+            HashMapInt::Vec(mut m) => {
+                let m1: HashBrown<K, V, S> = m.drain().collect();
+                HashMapInt::Map(m1)
+            }
+            _ => unreachable!(),
+        };
+        match &mut self.0 {
+            HashMapInt::Map(m) => m,
+            _ => {
+                unreachable!()
+            }
+        }
+    }
     /// Inserts a key-value pair into the map.
     ///
     /// If the map did not have this key present, [`None`] is returned.
@@ -721,16 +748,8 @@ where
             HashMapInt::Map(m) => m.insert(k, v),
             HashMapInt::Vec(m) => {
                 if m.len() >= VEC_LIMIT_UPPER {
-                    let r;
-                    self.0 = match std::mem::replace(&mut self.0, HashMapInt::None) {
-                        HashMapInt::Vec(mut m) => {
-                            let mut m1: HashBrown<K, V, S> = m.drain().collect();
-                            r = m1.insert(k, v);
-                            HashMapInt::Map(m1)
-                        }
-                        _ => unreachable!(),
-                    };
-                    r
+                    let map = self.swap_backend_to_map();
+                    map.insert(k, v)
                 } else {
                     m.insert(k, v)
                 }
@@ -835,12 +854,22 @@ where
     /// map if keys are present - it's a fast way to build
     /// a new map when uniqueness is known ahead of time.
     #[inline]
-    pub fn insert_nocheck(&mut self, k: K, v: V) {
+    pub fn insert_nocheck(&mut self, k: K, v: V)
+    where
+        S: Default,
+    {
         match &mut self.0 {
             HashMapInt::Map(m) => {
                 m.insert_unique_unchecked(k, v);
             }
-            HashMapInt::Vec(m) => m.insert_nocheck(k, v),
+            HashMapInt::Vec(m) => {
+                if m.len() >= VEC_LIMIT_UPPER {
+                    let map = self.swap_backend_to_map();
+                    map.insert_unique_unchecked(k, v);
+                } else {
+                    m.insert_nocheck(k, v);
+                }
+            }
             HashMapInt::None => unreachable!(),
         }
     }
@@ -922,7 +951,15 @@ where
     /// acting erratically, with two keys randomly masking each other. Implementations
     /// are free to assume this doesn't happen (within the limits of memory-safety).
     #[inline]
-    pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<'_, K, V, S> {
+    pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<'_, K, V, VEC_LIMIT_UPPER, S>
+    where
+        S: Default,
+    {
+        if let HashMapInt::Vec(m) = &self.0 {
+            if m.len() >= VEC_LIMIT_UPPER {
+                self.swap_backend_to_map();
+            }
+        }
         match &mut self.0 {
             HashMapInt::Vec(m) => RawEntryBuilderMut::from(m.raw_entry_mut()),
             HashMapInt::Map(m) => RawEntryBuilderMut::from(m.raw_entry_mut()),
@@ -946,7 +983,7 @@ where
     ///
     /// Immutable raw entries have very limited use; you might instead want `raw_entry_mut`.
     #[inline]
-    pub fn raw_entry(&self) -> RawEntryBuilder<'_, K, V, S> {
+    pub fn raw_entry(&self) -> RawEntryBuilder<'_, K, V, VEC_LIMIT_UPPER, S> {
         match &self.0 {
             HashMapInt::Vec(m) => RawEntryBuilder::from(m.raw_entry()),
             HashMapInt::Map(m) => RawEntryBuilder::from(m.raw_entry()),
@@ -1004,6 +1041,7 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
 pub struct Values<'a, K, V> {
     inner: Iter<'a, K, V>,
 }
+
 impl<'a, K, V> Iterator for Values<'a, K, V> {
     type Item = &'a V;
 
@@ -1037,14 +1075,14 @@ impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
 }
 
 /// Drains the map
-pub struct Drain<'a, K, V>(DrainInt<'a, K, V>);
+pub struct Drain<'a, K, V, const N: usize>(DrainInt<'a, K, V, N>);
 
-enum DrainInt<'a, K, V> {
+enum DrainInt<'a, K, V, const N: usize> {
     Map(hashbrown::hash_map::Drain<'a, K, V>),
-    Vec(std::vec::Drain<'a, (K, V)>),
+    Vec(VecDrain<'a, (K, V), N>),
 }
 
-impl<'a, K, V> Iterator for Drain<'a, K, V> {
+impl<'a, K, V, const N: usize> Iterator for Drain<'a, K, V, N> {
     type Item = (K, V);
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -1061,20 +1099,57 @@ impl<'a, K, V> Iterator for Drain<'a, K, V> {
         }
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const TEST_SIZE: usize = 5;
+
     #[test]
     fn scale_up() {
-        let mut v = SizedHashMap::<_, _, _, 32>::new();
+        let mut v = SizedHashMap::<_, _, _, TEST_SIZE>::new();
         assert!(v.is_vec());
-        for i in 1..33 {
-            // 32 entries
+        for i in 1..TEST_SIZE + 1 {
             v.insert(i, i);
             assert!(v.is_vec());
         }
-        v.insert(33, 33);
+        v.insert(TEST_SIZE + 1, TEST_SIZE + 1);
         assert!(v.is_map());
+    }
+
+    #[test]
+    fn scale_up_via_entry() {
+        let mut v = SizedHashMap::<_, _, _, TEST_SIZE>::new();
+        assert!(v.is_vec());
+        for i in 1..TEST_SIZE + 1 {
+            v.entry(i).or_insert(i);
+            assert!(v.is_vec());
+        }
+        v.entry(TEST_SIZE + 1).or_insert(TEST_SIZE + 1);
+        assert!(v.is_map());
+    }
+
+    // Test that the array backend does not panic if you push enough entries
+    #[test]
+    #[cfg(feature = "arraybackend")]
+    fn scale_up_via_no_check() {
+        let mut v = SizedHashMap::<_, _, _, TEST_SIZE>::new();
+        for i in 1..TEST_SIZE + 2 {
+            v.insert_nocheck(i, i);
+        }
+    }
+
+    // Test that the array backend does not panic if you push enough entries
+    #[test]
+    #[cfg(feature = "arraybackend")]
+    fn scale_up_mixed() {
+        let mut v = SizedHashMap::<_, _, _, TEST_SIZE>::new();
+        for i in 1..TEST_SIZE + 1 {
+            v.insert(3 * i, i);
+            v.insert_nocheck(3 * i + 1, i);
+            v.entry(3 * i + 2).or_insert(i);
+        }
     }
 
     #[test]
