@@ -98,7 +98,6 @@ where
 enum HashMapInt<K, V, const N: usize, S = DefaultHashBuilder> {
     Map(HashBrown<K, V, S>),
     Vec(VecMap<K, V, N, S>),
-    None,
 }
 
 impl<K, V, const N: usize, S: Default> Default for HashMapInt<K, V, N, S> {
@@ -239,7 +238,6 @@ impl<K, V, S, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, S, VEC_LIMIT_UPPE
         match &self.0 {
             HashMapInt::Map(m) => m.hasher(),
             HashMapInt::Vec(m) => m.hasher(),
-            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -261,7 +259,6 @@ impl<K, V, S, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, S, VEC_LIMIT_UPPE
         match &self.0 {
             HashMapInt::Map(m) => m.capacity(),
             HashMapInt::Vec(m) => m.capacity(),
-            HashMapInt::None => unimplemented!(),
         }
     }
 
@@ -356,7 +353,6 @@ impl<K, V, S, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, S, VEC_LIMIT_UPPE
         match &self.0 {
             HashMapInt::Map(m) => IterInt::Map(m.iter()).into(),
             HashMapInt::Vec(m) => IterInt::Vec(m.iter()).into(),
-            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -387,7 +383,6 @@ impl<K, V, S, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, S, VEC_LIMIT_UPPE
         match &mut self.0 {
             HashMapInt::Map(m) => IterMutInt::Map(m.iter_mut()).into(),
             HashMapInt::Vec(m) => IterMutInt::Vec(m.iter_mut()).into(),
-            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -408,7 +403,6 @@ impl<K, V, S, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, S, VEC_LIMIT_UPPE
         match &self.0 {
             HashMapInt::Map(m) => m.len(),
             HashMapInt::Vec(m) => m.len(),
-            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -429,7 +423,6 @@ impl<K, V, S, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, S, VEC_LIMIT_UPPE
         match &self.0 {
             HashMapInt::Map(m) => m.is_empty(),
             HashMapInt::Vec(m) => m.is_empty(),
-            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -457,7 +450,6 @@ impl<K, V, S, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, S, VEC_LIMIT_UPPE
         match &mut self.0 {
             HashMapInt::Map(m) => Drain(DrainInt::Map(m.drain())),
             HashMapInt::Vec(m) => Drain(DrainInt::Vec(m.drain())),
-            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -479,7 +471,6 @@ impl<K, V, S, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, S, VEC_LIMIT_UPPE
         match &mut self.0 {
             HashMapInt::Map(m) => m.clear(),
             HashMapInt::Vec(m) => m.clear(),
-            HashMapInt::None => unreachable!(),
         }
     }
 }
@@ -511,7 +502,6 @@ where
         match &mut self.0 {
             HashMapInt::Map(m) => m.reserve(additional),
             HashMapInt::Vec(m) => m.reserve(additional),
-            HashMapInt::None => unreachable!(),
         }
     }
     /*
@@ -537,7 +527,6 @@ where
         match &mut self.0 {
             HashMapInt::Map(m) => m.try_reserve(additional),
             HashMapInt::Vec(m) => m.try_reserve(additional),
-            HashMapInt::None => unreachable!(),
         }
     }
     */
@@ -561,7 +550,6 @@ where
         match &mut self.0 {
             HashMapInt::Map(m) => m.shrink_to_fit(),
             HashMapInt::Vec(m) => m.shrink_to_fit(),
-            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -596,7 +584,6 @@ where
         match &mut self.0 {
             HashMapInt::Map(m) => m.entry(key).into(),
             HashMapInt::Vec(m) => m.entry(key).into(),
-            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -628,7 +615,6 @@ where
         match &self.0 {
             HashMapInt::Map(m) => m.get(k),
             HashMapInt::Vec(m) => m.get(k),
-            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -659,7 +645,6 @@ where
         match &self.0 {
             HashMapInt::Map(m) => m.contains_key(k),
             HashMapInt::Vec(m) => m.contains_key(k),
-            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -693,23 +678,25 @@ where
         match &mut self.0 {
             HashMapInt::Map(m) => m.get_mut(k),
             HashMapInt::Vec(m) => m.get_mut(k),
-            HashMapInt::None => unreachable!(),
         }
     }
     fn swap_backend_to_map(&mut self) -> &mut hashbrown::HashMap<K, V, S>
     where
         S: Default,
     {
-        self.0 = match std::mem::replace(&mut self.0, HashMapInt::None) {
-            HashMapInt::Vec(mut m) => {
+        self.0 = match &mut self.0 {
+            HashMapInt::Vec(m) => {
                 let m1: HashBrown<K, V, S> = m.drain().collect();
                 HashMapInt::Map(m1)
             }
-            _ => unreachable!(),
+            HashMapInt::Map(_) => {
+                unreachable!()
+            }
         };
+
         match &mut self.0 {
             HashMapInt::Map(m) => m,
-            _ => {
+            HashMapInt::Vec(_) => {
                 unreachable!()
             }
         }
@@ -754,7 +741,6 @@ where
                     m.insert(k, v)
                 }
             }
-            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -787,7 +773,6 @@ where
         match &mut self.0 {
             HashMapInt::Map(m) => m.remove(k),
             HashMapInt::Vec(m) => m.remove(k),
-            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -820,7 +805,6 @@ where
         match &mut self.0 {
             HashMapInt::Map(m) => m.remove_entry(k),
             HashMapInt::Vec(m) => m.remove_entry(k),
-            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -846,7 +830,6 @@ where
         match &mut self.0 {
             HashMapInt::Map(m) => m.retain(f),
             HashMapInt::Vec(m) => m.retain(f),
-            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -870,7 +853,6 @@ where
                     m.insert_nocheck(k, v);
                 }
             }
-            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -880,7 +862,6 @@ where
         match &self.0 {
             HashMapInt::Map(_m) => true,
             HashMapInt::Vec(_m) => false,
-            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -890,7 +871,6 @@ where
         match &self.0 {
             HashMapInt::Map(_m) => false,
             HashMapInt::Vec(_m) => true,
-            HashMapInt::None => unreachable!(),
         }
     }
 }
@@ -963,7 +943,6 @@ where
         match &mut self.0 {
             HashMapInt::Vec(m) => RawEntryBuilderMut::from(m.raw_entry_mut()),
             HashMapInt::Map(m) => RawEntryBuilderMut::from(m.raw_entry_mut()),
-            HashMapInt::None => unreachable!(),
         }
     }
 
@@ -987,7 +966,6 @@ where
         match &self.0 {
             HashMapInt::Vec(m) => RawEntryBuilder::from(m.raw_entry()),
             HashMapInt::Map(m) => RawEntryBuilder::from(m.raw_entry()),
-            HashMapInt::None => unreachable!(),
         }
     }
 }

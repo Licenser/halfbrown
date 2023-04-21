@@ -135,7 +135,6 @@ impl<K, V, const N: usize, S> IntoIterator for SizedHashMap<K, V, S, N> {
         match self.0 {
             HashMapInt::Map(m) => IntoIter(IntoIterInt::Map(m.into_iter())),
             HashMapInt::Vec(m) => IntoIter(IntoIterInt::Vec(m.into_iter())),
-            HashMapInt::None => unreachable!(),
         }
     }
 }
