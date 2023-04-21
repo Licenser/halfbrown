@@ -18,15 +18,15 @@ use std::fmt;
 ///
 /// [`HashMap`]: struct.HashMap.html
 /// [`entry`]: struct.HashMap.html#method.entry
-pub enum Entry<'a, K, V, S> {
+pub enum Entry<'a, K, V, const N: usize, S> {
     /// An occupied entry.
-    Occupied(OccupiedEntry<'a, K, V, S>),
+    Occupied(OccupiedEntry<'a, K, V, N, S>),
 
     /// A vacant entry.
-    Vacant(VacantEntry<'a, K, V, S>),
+    Vacant(VacantEntry<'a, K, V, N, S>),
 }
 
-impl<'a, K, V, S> Entry<'a, K, V, S> {
+impl<'a, K, V, const N: usize, S> Entry<'a, K, V, N, S> {
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
     ///
@@ -135,7 +135,7 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
         }
     }
 }
-impl<'a, K, V: Default, S> Entry<'a, K, V, S> {
+impl<'a, K, V: Default, const N: usize, S> Entry<'a, K, V, N, S> {
     /// Ensures a value is in the entry by inserting the default value if empty,
     /// and returns a mutable reference to the value in the entry.
     ///
@@ -163,8 +163,8 @@ impl<'a, K, V: Default, S> Entry<'a, K, V, S> {
         }
     }
 }
-impl<'a, K, V, S> From<HashBrownEntry<'a, K, V, S>> for Entry<'a, K, V, S> {
-    fn from(f: HashBrownEntry<'a, K, V, S>) -> Entry<'a, K, V, S> {
+impl<'a, K, V, const N: usize, S> From<HashBrownEntry<'a, K, V, S>> for Entry<'a, K, V, N, S> {
+    fn from(f: HashBrownEntry<'a, K, V, S>) -> Entry<'a, K, V, N, S> {
         match f {
             HashBrownEntry::Occupied(o) => Entry::Occupied(OccupiedEntry(OccupiedEntryInt::Map(o))),
             HashBrownEntry::Vacant(o) => Entry::Vacant(VacantEntry(VacantEntryInt::Map(o))),
@@ -172,8 +172,8 @@ impl<'a, K, V, S> From<HashBrownEntry<'a, K, V, S>> for Entry<'a, K, V, S> {
     }
 }
 
-impl<'a, K, V, S> From<VecMapEntry<'a, K, V, S>> for Entry<'a, K, V, S> {
-    fn from(f: VecMapEntry<'a, K, V, S>) -> Entry<'a, K, V, S> {
+impl<'a, K, V, const N: usize, S> From<VecMapEntry<'a, K, V, N, S>> for Entry<'a, K, V, N, S> {
+    fn from(f: VecMapEntry<'a, K, V, N, S>) -> Entry<'a, K, V, N, S> {
         match f {
             VecMapEntry::Occupied(o) => Entry::Occupied(OccupiedEntry(OccupiedEntryInt::Vec(o))),
             VecMapEntry::Vacant(o) => Entry::Vacant(VacantEntry(VacantEntryInt::Vec(o))),
@@ -181,7 +181,7 @@ impl<'a, K, V, S> From<VecMapEntry<'a, K, V, S>> for Entry<'a, K, V, S> {
     }
 }
 
-impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for Entry<'_, K, V, S> {
+impl<K: fmt::Debug, V: fmt::Debug, const N: usize, S> fmt::Debug for Entry<'_, K, V, N, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Entry::Vacant(ref v) => f.debug_tuple("Entry").field(v).finish(),
@@ -194,21 +194,21 @@ impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for Entry<'_, K, V, S> {
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entryx`]: enum.Entry.html
-pub struct OccupiedEntry<'a, K, V, S>(OccupiedEntryInt<'a, K, V, S>);
+pub struct OccupiedEntry<'a, K, V, const N: usize, S>(OccupiedEntryInt<'a, K, V, S, N>);
 
-enum OccupiedEntryInt<'a, K, V, S> {
+enum OccupiedEntryInt<'a, K, V, S, const N: usize> {
     Map(hash_map::OccupiedEntry<'a, K, V, S>),
-    Vec(vecmap::OccupiedEntry<'a, K, V, S>),
+    Vec(vecmap::OccupiedEntry<'a, K, V, S, N>),
 }
 
-unsafe impl<K, V, S> Send for OccupiedEntry<'_, K, V, S>
+unsafe impl<K, V, const N: usize, S> Send for OccupiedEntry<'_, K, V, N, S>
 where
     K: Send,
     V: Send,
     S: Send,
 {
 }
-unsafe impl<K, V, S> Sync for OccupiedEntry<'_, K, V, S>
+unsafe impl<K, V, const N: usize, S> Sync for OccupiedEntry<'_, K, V, N, S>
 where
     K: Sync,
     V: Sync,
@@ -216,7 +216,7 @@ where
 {
 }
 
-impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for OccupiedEntry<'_, K, V, S> {
+impl<K: fmt::Debug, V: fmt::Debug, const N: usize, S> fmt::Debug for OccupiedEntry<'_, K, V, N, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
             OccupiedEntryInt::Map(m) => m.fmt(f),
@@ -229,16 +229,16 @@ impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for OccupiedEntry<'_, K, V, S> 
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
-pub struct VacantEntry<'a, K, V, S>(VacantEntryInt<'a, K, V, S>);
+pub struct VacantEntry<'a, K, V, const N: usize, S>(VacantEntryInt<'a, K, V, N, S>);
 
-enum VacantEntryInt<'a, K, V, S> {
+enum VacantEntryInt<'a, K, V, const N: usize, S> {
     /// a map based implementation
     Map(hashbrown::hash_map::VacantEntry<'a, K, V, S>),
     /// a vec based implementation
-    Vec(vecmap::VacantEntry<'a, K, V, S>),
+    Vec(vecmap::VacantEntry<'a, K, V, N, S>),
 }
 
-impl<K: fmt::Debug, V, S> fmt::Debug for VacantEntry<'_, K, V, S> {
+impl<K: fmt::Debug, V, const N: usize, S> fmt::Debug for VacantEntry<'_, K, V, N, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
             VacantEntryInt::Map(m) => m.fmt(f),
@@ -247,7 +247,7 @@ impl<K: fmt::Debug, V, S> fmt::Debug for VacantEntry<'_, K, V, S> {
     }
 }
 
-impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
+impl<'a, K, V, const N: usize, S> OccupiedEntry<'a, K, V, N, S> {
     /// Gets a reference to the key in the entry.
     ///
     /// # Examples
@@ -493,7 +493,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     }
 }
 
-impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
+impl<'a, K, V, const N: usize, S> VacantEntry<'a, K, V, N, S> {
     /// Gets a reference to the key that would be used when inserting a value
     /// through the `VacantEntry`.
     ///

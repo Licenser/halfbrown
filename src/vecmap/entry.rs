@@ -15,15 +15,15 @@ use std::mem;
 ///
 /// [`HashMap`]: struct.HashMap.html
 /// [`entry`]: struct.HashMap.html#method.entry
-pub enum Entry<'a, K, V, S> {
+pub enum Entry<'a, K, V, const N: usize, S> {
     /// An occupied entry.
-    Occupied(OccupiedEntry<'a, K, V, S>),
+    Occupied(OccupiedEntry<'a, K, V, S, N>),
 
     /// A vacant entry.
-    Vacant(VacantEntry<'a, K, V, S>),
+    Vacant(VacantEntry<'a, K, V, N, S>),
 }
 
-impl<'a, K, V, S> Entry<'a, K, V, S> {
+impl<'a, K, V, S, const N: usize> Entry<'a, K, V, N, S> {
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
     ///
@@ -130,7 +130,7 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
     }
 }
 
-impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for Entry<'_, K, V, S> {
+impl<K: fmt::Debug, V: fmt::Debug, const N: usize, S> fmt::Debug for Entry<'_, K, V, N, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Entry::Vacant(ref v) => f.debug_tuple("Entry").field(v).finish(),
@@ -143,20 +143,20 @@ impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for Entry<'_, K, V, S> {
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
-pub struct OccupiedEntry<'a, K, V, S> {
+pub struct OccupiedEntry<'a, K, V, S, const N: usize> {
     idx: usize,
     key: Option<K>,
-    map: &'a mut VecMap<K, V, S>,
+    map: &'a mut VecMap<K, V, N, S>,
 }
 
-unsafe impl<K, V, S> Send for OccupiedEntry<'_, K, V, S>
+unsafe impl<K, V, S, const N: usize> Send for OccupiedEntry<'_, K, V, S, N>
 where
     K: Send,
     V: Send,
     S: Send,
 {
 }
-unsafe impl<K, V, S> Sync for OccupiedEntry<'_, K, V, S>
+unsafe impl<K, V, S, const N: usize> Sync for OccupiedEntry<'_, K, V, S, N>
 where
     K: Sync,
     V: Sync,
@@ -164,7 +164,7 @@ where
 {
 }
 
-impl<K: Debug, V: Debug, S> Debug for OccupiedEntry<'_, K, V, S> {
+impl<K: Debug, V: Debug, S, const N: usize> Debug for OccupiedEntry<'_, K, V, S, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedEntry")
             .field("key", self.key())
@@ -173,8 +173,8 @@ impl<K: Debug, V: Debug, S> Debug for OccupiedEntry<'_, K, V, S> {
     }
 }
 
-impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
-    pub(crate) fn new(idx: usize, key: K, map: &'a mut VecMap<K, V, S>) -> Self {
+impl<'a, K, V, S, const N: usize> OccupiedEntry<'a, K, V, S, N> {
+    pub(crate) fn new(idx: usize, key: K, map: &'a mut VecMap<K, V, N, S>) -> Self {
         Self {
             idx,
             key: Some(key),
@@ -414,19 +414,19 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
-pub struct VacantEntry<'a, K, V, S> {
+pub struct VacantEntry<'a, K, V, const N: usize, S> {
     key: K,
-    map: &'a mut VecMap<K, V, S>,
+    map: &'a mut VecMap<K, V, N, S>,
 }
 
-impl<K: Debug, V, S> Debug for VacantEntry<'_, K, V, S> {
+impl<K: Debug, V, const N: usize, S> Debug for VacantEntry<'_, K, V, N, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("VacantEntry").field(self.key()).finish()
     }
 }
 
-impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
-    pub(crate) fn new(key: K, map: &'a mut VecMap<K, V, S>) -> Self {
+impl<'a, K, V, const N: usize, S> VacantEntry<'a, K, V, N, S> {
+    pub(crate) fn new(key: K, map: &'a mut VecMap<K, V, N, S>) -> Self {
         Self { key, map }
     }
     /// Gets a reference to the key that would be used when inserting a value

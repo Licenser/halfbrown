@@ -5,33 +5,39 @@ mod raw_entry;
 
 pub(crate) use self::entry::*;
 pub(crate) use self::raw_entry::*;
+use crate::vectypes::VecDrain;
 use crate::DefaultHashBuilder;
 use std::borrow::Borrow;
 
 #[derive(Debug, Clone)]
-pub(crate) struct VecMap<K, V, S = DefaultHashBuilder> {
+pub(crate) struct VecMap<K, V, const N: usize, S = DefaultHashBuilder> {
+    #[cfg(feature = "arraybackend")]
+    v: arrayvec::ArrayVec<(K, V), N>,
+    #[cfg(not(feature = "arraybackend"))]
     v: Vec<(K, V)>,
     hash_builder: S,
 }
 
-impl<K, V, S: Default> Default for VecMap<K, V, S> {
+impl<K, V, const N: usize, S: Default> Default for VecMap<K, V, N, S> {
     #[inline]
+    #[allow(clippy::default_trait_access)]
     fn default() -> Self {
         Self {
-            v: Vec::new(),
+            v: Default::default(),
             hash_builder: S::default(),
         }
     }
 }
 
-impl<K1, V1, K2, V2, S1, S2> PartialEq<VecMap<K2, V2, S2>> for VecMap<K1, V1, S1>
+impl<K1, V1, K2, V2, const N: usize, S1, S2> PartialEq<VecMap<K2, V2, N, S2>>
+    for VecMap<K1, V1, N, S1>
 where
     K1: Eq,
     K2: Eq + Borrow<K1>,
     V1: PartialEq,
     V2: Borrow<V1>,
 {
-    fn eq(&self, other: &VecMap<K2, V2, S2>) -> bool {
+    fn eq(&self, other: &VecMap<K2, V2, N, S2>) -> bool {
         if self.len() != other.len() {
             return false;
         }
@@ -41,30 +47,41 @@ where
     }
 }
 
-impl<K, V, S> Eq for VecMap<K, V, S>
+impl<K, V, const N: usize, S> Eq for VecMap<K, V, N, S>
 where
     K: Eq,
     V: Eq,
 {
 }
 
-impl<K, V> VecMap<K, V, DefaultHashBuilder> {
+impl<K, V, const N: usize> VecMap<K, V, N, DefaultHashBuilder> {
+    #[cfg(feature = "arraybackend")]
+    #[inline]
+    pub(crate) fn with_capacity(_capacity: usize) -> Self {
+        let v = arrayvec::ArrayVec::new();
+        Self {
+            v,
+            hash_builder: DefaultHashBuilder::default(),
+        }
+    }
+    #[cfg(not(feature = "arraybackend"))]
     #[inline]
     pub(crate) fn with_capacity(capacity: usize) -> Self {
+        let v = Vec::with_capacity(capacity);
         Self {
-            v: Vec::with_capacity(capacity),
+            v,
             hash_builder: DefaultHashBuilder::default(),
         }
     }
 }
 
-impl<K, V, S> VecMap<K, V, S> {
+impl<K, V, const N: usize, S> VecMap<K, V, N, S> {
     #[inline]
     pub fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(&K, &mut V) -> bool,
     {
-        let mut new = Vec::new();
+        let mut new = Self::make_empty_vec_backend();
         std::mem::swap(&mut new, &mut self.v);
         self.v = new
             .into_iter()
@@ -98,25 +115,36 @@ impl<K, V, S> VecMap<K, V, S> {
     }
 
     #[inline]
-    pub(crate) fn drain(&mut self) -> std::vec::Drain<(K, V)> {
+    pub(crate) fn drain(&mut self) -> VecDrain<(K, V), N> {
         self.v.drain(..)
     }
 
     #[inline]
+    #[cfg(not(feature = "arraybackend"))]
     pub(crate) fn reserve(&mut self, additional: usize) {
         self.v.reserve(additional);
     }
+    #[cfg(feature = "arraybackend")]
+    #[allow(clippy::unused_self)]
+    #[inline]
+    pub(crate) fn reserve(&mut self, _additional: usize) {}
 
+    #[cfg(not(feature = "arraybackend"))]
     #[inline]
     pub(crate) fn shrink_to_fit(&mut self) {
         self.v.shrink_to_fit();
     }
+    #[cfg(feature = "arraybackend")]
+    #[allow(clippy::unused_self)]
+    #[inline]
+    pub(crate) fn shrink_to_fit(&mut self) {}
     #[inline]
     pub(crate) fn clear(&mut self) {
         self.v.clear();
     }
 }
-impl<K, V, S> VecMap<K, V, S> {
+
+impl<K, V, const N: usize, S> VecMap<K, V, N, S> {
     #[inline]
     pub(crate) fn hasher(&self) -> &S {
         &self.hash_builder
@@ -169,7 +197,7 @@ impl<K, V, S> VecMap<K, V, S> {
         self.v.push((k, v));
     }
 
-    pub(crate) fn entry(&mut self, key: K) -> Entry<K, V, S>
+    pub(crate) fn entry(&mut self, key: K) -> Entry<K, V, N, S>
     where
         K: Eq,
     {
@@ -254,7 +282,7 @@ impl<K, V, S> VecMap<K, V, S> {
     /// acting erratically, with two keys randomly masking each other. Implementations
     /// are free to assume this doesn't happen (within the limits of memory-safety).
     #[inline]
-    pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<'_, K, V, S> {
+    pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<'_, K, V, N, S> {
         RawEntryBuilderMut { map: self }
     }
 
@@ -274,7 +302,7 @@ impl<K, V, S> VecMap<K, V, S> {
     ///
     /// Immutable raw entries have very limited use; you might instead want `raw_entry_mut`.
     #[inline]
-    pub fn raw_entry(&self) -> RawEntryBuilder<'_, K, V, S> {
+    pub fn raw_entry(&self) -> RawEntryBuilder<'_, K, V, N, S> {
         RawEntryBuilder { map: self }
     }
 
@@ -296,5 +324,15 @@ impl<K, V, S> VecMap<K, V, S> {
     unsafe fn get_mut_idx(&mut self, idx: usize) -> (&mut K, &mut V) {
         let r = self.v.get_unchecked_mut(idx);
         (&mut r.0, &mut r.1)
+    }
+    #[cfg(feature = "arraybackend")]
+    #[inline]
+    fn make_empty_vec_backend() -> arrayvec::ArrayVec<(K, V), N> {
+        arrayvec::ArrayVec::new()
+    }
+    #[cfg(not(feature = "arraybackend"))]
+    #[inline]
+    fn make_empty_vec_backend() -> Vec<(K, V)> {
+        Vec::new()
     }
 }
