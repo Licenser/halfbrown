@@ -1088,7 +1088,7 @@ mod tests {
     fn scale_up() {
         let mut v = SizedHashMap::<_, _, _, TEST_SIZE>::new();
         assert!(v.is_vec());
-        for i in 1..TEST_SIZE + 1 {
+        for i in 1..=TEST_SIZE {
             v.insert(i, i);
             assert!(v.is_vec());
         }
@@ -1100,7 +1100,7 @@ mod tests {
     fn scale_up_via_entry() {
         let mut v = SizedHashMap::<_, _, _, TEST_SIZE>::new();
         assert!(v.is_vec());
-        for i in 1..TEST_SIZE + 1 {
+        for i in 1..=TEST_SIZE {
             v.entry(i).or_insert(i);
             assert!(v.is_vec());
         }

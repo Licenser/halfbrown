@@ -139,7 +139,7 @@ impl<K, V, const N: usize, S> IntoIterator for SizedHashMap<K, V, S, N> {
     }
 }
 
-impl<'a, K, V, S> IntoIterator for &'a SizedHashMap<K, V, S> {
+impl<'a, K, V, S, const N: usize> IntoIterator for &'a SizedHashMap<K, V, S, N> {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;
 
@@ -149,7 +149,7 @@ impl<'a, K, V, S> IntoIterator for &'a SizedHashMap<K, V, S> {
     }
 }
 
-impl<K, V, S> FromIterator<(K, V)> for SizedHashMap<K, V, S>
+impl<K, V, S, const N: usize> FromIterator<(K, V)> for SizedHashMap<K, V, S, N>
 where
     K: Eq + Hash,
     S: BuildHasher + Default,
