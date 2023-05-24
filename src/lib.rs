@@ -138,14 +138,7 @@ impl<K, V, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, DefaultHashBuilder, 
     #[inline]
     #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
-        Self(if capacity > VEC_LIMIT_UPPER {
-            HashMapInt::Map(HashBrown::with_capacity_and_hasher(
-                capacity,
-                DefaultHashBuilder::default(),
-            ))
-        } else {
-            HashMapInt::Vec(VecMap::with_capacity(capacity))
-        })
+        Self::with_capacity_and_hasher(capacity, DefaultHashBuilder::default())
     }
     /// Same as with capacity with the difference that it, despite of the
     /// requested size always returns a vector. This allows quicker generation
@@ -188,7 +181,7 @@ impl<K, V, S, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, S, VEC_LIMIT_UPPE
     /// ```
     #[inline]
     pub fn with_hasher(hash_builder: S) -> Self {
-        Self(HashMapInt::Map(HashBrown::with_hasher(hash_builder)))
+        Self(HashMapInt::Vec(VecMap::with_hasher(hash_builder)))
     }
 
     /// Creates an empty `HashMap` with the specified capacity, using `hash_builder`
@@ -214,10 +207,11 @@ impl<K, V, S, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, S, VEC_LIMIT_UPPE
     /// ```
     #[inline]
     pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
-        Self(HashMapInt::Map(HashBrown::with_capacity_and_hasher(
-            capacity,
-            hash_builder,
-        )))
+        Self(if capacity > VEC_LIMIT_UPPER {
+            HashMapInt::Map(HashBrown::with_capacity_and_hasher(capacity, hash_builder))
+        } else {
+            HashMapInt::Vec(VecMap::with_capacity_and_hasher(capacity, hash_builder))
+        })
     }
 
     /// Returns a reference to the map's [`BuildHasher`].

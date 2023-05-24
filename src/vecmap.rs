@@ -77,6 +77,23 @@ impl<K, V, const N: usize> VecMap<K, V, N, DefaultHashBuilder> {
 
 impl<K, V, const N: usize, S> VecMap<K, V, N, S> {
     #[inline]
+    pub fn with_hasher(hash_builder: S) -> Self {
+        Self::with_capacity_and_hasher(0, hash_builder)
+    }
+
+    #[cfg(feature = "arraybackend")]
+    #[inline]
+    pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
+        let v = arrayvec::ArrayVec::new();
+        Self { v, hash_builder }
+    }
+    #[cfg(not(feature = "arraybackend"))]
+    pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
+        let v = Vec::with_capacity(capacity);
+        Self { v, hash_builder }
+    }
+
+    #[inline]
     pub fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(&K, &mut V) -> bool,

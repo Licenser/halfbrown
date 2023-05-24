@@ -55,7 +55,7 @@ macro_rules! hashmap {
             let mut _map: $crate::HashMap<_,_> = $crate::HashMap::with_capacity(_cap);
             $(
                 #[allow(let_underscore_drop)]
-                let _ = _map.insert($key, $value);
+                let _: Option<_> = _map.insert($key, $value);
             )*
             _map
         }
