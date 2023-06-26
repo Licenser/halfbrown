@@ -22,11 +22,12 @@ mod se {
 }
 
 mod de {
-    use crate::HashMap;
+    use crate::SizedHashMap;
     use core::hash::Hash;
     use core::marker::PhantomData;
     use serde::de::{Deserialize, Deserializer, MapAccess, Visitor};
     use std::fmt;
+    use std::hash::BuildHasher;
 
     mod size_hint {
         use core::cmp;
@@ -40,12 +41,13 @@ mod de {
         }
     }
 
-    impl<'de, K, V> Deserialize<'de> for HashMap<K, V>
+    impl<'de, K, V, H, const N: usize> Deserialize<'de> for SizedHashMap<K, V, H, N>
     where
         K: Eq + Hash + Deserialize<'de>,
         V: Deserialize<'de>,
+        H: Default + BuildHasher,
     {
-        fn deserialize<D>(deserializer: D) -> Result<HashMap<K, V>, D::Error>
+        fn deserialize<D>(deserializer: D) -> Result<SizedHashMap<K, V, H, N>, D::Error>
         where
             D: Deserializer<'de>,
         {
@@ -55,19 +57,21 @@ mod de {
         }
     }
 
-    struct HashMapVisitor<K, V>
+    struct HashMapVisitor<K, V, H, const N: usize>
     where
         K: Eq + Hash,
+        H: Default + BuildHasher,
     {
-        marker: PhantomData<HashMap<K, V>>,
+        marker: PhantomData<SizedHashMap<K, V, H, N>>,
     }
 
-    impl<'de, K, V> Visitor<'de> for HashMapVisitor<K, V>
+    impl<'de, K, V, H, const N: usize> Visitor<'de> for HashMapVisitor<K, V, H, N>
     where
         K: Eq + Hash + Deserialize<'de>,
         V: Deserialize<'de>,
+        H: Default + BuildHasher,
     {
-        type Value = HashMap<K, V>;
+        type Value = SizedHashMap<K, V, H, N>;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             formatter.write_str("an Object/Map structure")
@@ -79,7 +83,7 @@ mod de {
         {
             let size = size_hint::cautious(map.size_hint());
 
-            let mut m = HashMap::with_capacity(size);
+            let mut m = SizedHashMap::with_capacity_and_hasher(size, H::default());
             while let Some(k) = map.next_key()? {
                 let v = map.next_value()?;
                 m.insert(k, v);
