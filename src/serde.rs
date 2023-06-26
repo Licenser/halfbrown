@@ -1,9 +1,9 @@
 mod se {
-    use crate::HashMap;
+    use crate::SizedHashMap;
     use core::hash::Hash;
     use serde::ser::{Serialize, SerializeMap, Serializer};
 
-    impl<K, V> Serialize for HashMap<K, V>
+    impl<K, V, H, const N: usize> Serialize for SizedHashMap<K, V, H, N>
     where
         K: Eq + Hash + Serialize,
         V: Serialize,

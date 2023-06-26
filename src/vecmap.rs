@@ -1,4 +1,4 @@
-///! A vector based map data structure, mostly for internal use
+//! A vector based map data structure, mostly for internal use
 mod entry;
 mod iter;
 mod raw_entry;
