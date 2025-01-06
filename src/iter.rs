@@ -8,7 +8,7 @@ use std::iter::{FromIterator, FusedIterator, IntoIterator};
 pub struct Iter<'a, K, V>(IterInt<'a, K, V>);
 
 /// Manual implementation so that `Clone` isn't required for `K` nor `V`
-impl<'a, K, V> Clone for Iter<'a, K, V> {
+impl<K, V> Clone for Iter<'_, K, V> {
     fn clone(&self) -> Self {
         Iter(self.0.clone())
     }
@@ -27,7 +27,7 @@ pub(crate) enum IterInt<'a, K, V> {
 }
 
 /// Manual implementation so that `Clone` isn't required for `K` nor `V`
-impl<'a, K, V> Clone for IterInt<'a, K, V> {
+impl<K, V> Clone for IterInt<'_, K, V> {
     fn clone(&self) -> Self {
         match self {
             IterInt::Map(i) => IterInt::Map(i.clone()),
@@ -60,7 +60,7 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
     }
 }
 
-impl<'a, K, V> ExactSizeIterator for Iter<'a, K, V> {
+impl<K, V> ExactSizeIterator for Iter<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         match &self.0 {
@@ -70,7 +70,7 @@ impl<'a, K, V> ExactSizeIterator for Iter<'a, K, V> {
     }
 }
 
-impl<'a, K, V> FusedIterator for Iter<'a, K, V> {}
+impl<K, V> FusedIterator for Iter<'_, K, V> {}
 
 /// Into iterator for a Halfbrown map
 pub struct IntoIter<K, V, const N: usize>(IntoIterInt<K, V, N>);
@@ -149,6 +149,16 @@ impl<'a, K, V, S, const N: usize> IntoIterator for &'a SizedHashMap<K, V, S, N> 
     }
 }
 
+impl<'a, K, V, S, const N: usize> IntoIterator for &'a mut SizedHashMap<K, V, S, N> {
+    type Item = (&'a K, &'a V);
+    type IntoIter = Iter<'a, K, V>;
+
+    #[inline]
+    fn into_iter(self) -> Iter<'a, K, V> {
+        self.iter()
+    }
+}
+
 impl<K, V, S, const N: usize> FromIterator<(K, V)> for SizedHashMap<K, V, S, N>
 where
     K: Eq + Hash,
@@ -198,7 +208,7 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
     }
 }
 
-impl<'a, K, V> ExactSizeIterator for IterMut<'a, K, V> {
+impl<K, V> ExactSizeIterator for IterMut<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         match &self.0 {
@@ -208,4 +218,4 @@ impl<'a, K, V> ExactSizeIterator for IterMut<'a, K, V> {
     }
 }
 
-impl<'a, K, V> FusedIterator for IterMut<'a, K, V> {}
+impl<K, V> FusedIterator for IterMut<'_, K, V> {}

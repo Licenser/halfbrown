@@ -230,7 +230,7 @@ fn bench_group(b: &mut Criterion, name: &str, bench_input: BenchInput) {
             |data| {
                 let mut m = halfbrown::HashMap::with_capacity(bench_input.initial_cap);
                 for e in data {
-                    m.insert_nocheck(e, e);
+                    unsafe { m.insert_nocheck(e, e) };
                 }
             },
             BatchSize::SmallInput,

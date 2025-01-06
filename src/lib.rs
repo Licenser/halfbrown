@@ -19,17 +19,14 @@
 //! their copyright.
 
 #![warn(unused_extern_crates)]
-#![cfg_attr(
-feature = "cargo-clippy",
-deny(
-clippy::all,
-clippy::unwrap_used,
-clippy::unnecessary_unwrap,
-clippy::pedantic
-),
-// We might want to revisit inline_always
-allow(clippy::module_name_repetitions, clippy::inline_always)
+#![deny(
+    clippy::all,
+    clippy::unwrap_used,
+    clippy::unnecessary_unwrap,
+    clippy::pedantic
 )]
+// We might want to revisit inline_always
+#![allow(clippy::module_name_repetitions, clippy::inline_always)]
 #![deny(missing_docs)]
 
 mod entry;
@@ -58,7 +55,7 @@ pub type DefaultHashBuilder = core::hash::BuildHasherDefault<rustc_hash::FxHashe
 
 use crate::vectypes::VecDrain;
 #[cfg(not(feature = "fxhash"))]
-pub use hashbrown::hash_map::DefaultHashBuilder;
+pub use hashbrown::DefaultHashBuilder;
 
 /// `SizedHashMap` implementation that alternates between a vector
 /// and a hashmap to improve performance for low key counts.
@@ -67,7 +64,6 @@ pub type HashMap<K, V, S = DefaultHashBuilder> = SizedHashMap<K, V, S, 32>;
 
 /// Maximum nymber of elements before the representaiton is swapped from
 /// Vec to `HashMap`
-
 /// `SizedHashMap` implementation that alternates between a vector
 /// and a hashmap to improve performance for low key counts. With a configurable upper vector limit
 #[derive(Clone)]
@@ -172,8 +168,8 @@ impl<K, V, S, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, S, VEC_LIMIT_UPPE
     /// # Examples
     ///
     /// ```
-    /// use hashbrown::HashMap;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
+    /// use halfbrown::HashMap;
+    /// use halfbrown::DefaultHashBuilder;
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut map = HashMap::with_hasher(s);
@@ -198,8 +194,8 @@ impl<K, V, S, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, S, VEC_LIMIT_UPPE
     /// # Examples
     ///
     /// ```
-    /// use hashbrown::HashMap;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
+    /// use halfbrown::HashMap;
+    /// use halfbrown::DefaultHashBuilder;
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut map = HashMap::with_capacity_and_hasher(10, s);
@@ -221,8 +217,8 @@ impl<K, V, S, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, S, VEC_LIMIT_UPPE
     /// # Examples
     ///
     /// ```
-    /// use hashbrown::HashMap;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
+    /// use halfbrown::HashMap;
+    /// use halfbrown::DefaultHashBuilder;
     ///
     /// let hasher = DefaultHashBuilder::default();
     /// let map: HashMap<i32, i32> = HashMap::with_hasher(hasher);
@@ -830,8 +826,13 @@ where
     /// Inserts element, this ignores check in the vector
     /// map if keys are present - it's a fast way to build
     /// a new map when uniqueness is known ahead of time.
+    ///
+    /// # Safety
+    ///
+    /// Used for building new hashmaps wher eit is known that
+    /// the keys are unique.
     #[inline]
-    pub fn insert_nocheck(&mut self, k: K, v: V)
+    pub unsafe fn insert_nocheck(&mut self, k: K, v: V)
     where
         S: Default,
     {
@@ -1054,7 +1055,7 @@ enum DrainInt<'a, K, V, const N: usize> {
     Vec(VecDrain<'a, (K, V), N>),
 }
 
-impl<'a, K, V, const N: usize> Iterator for Drain<'a, K, V, N> {
+impl<K, V, const N: usize> Iterator for Drain<'_, K, V, N> {
     type Item = (K, V);
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -1108,7 +1109,7 @@ mod tests {
     fn scale_up_via_no_check() {
         let mut v = SizedHashMap::<_, _, _, TEST_SIZE>::new();
         for i in 1..TEST_SIZE + 2 {
-            v.insert_nocheck(i, i);
+            unsafe { v.insert_nocheck(i, i) };
         }
     }
 
@@ -1119,7 +1120,7 @@ mod tests {
         let mut v = SizedHashMap::<_, _, _, TEST_SIZE>::new();
         for i in 1..TEST_SIZE + 1 {
             v.insert(3 * i, i);
-            v.insert_nocheck(3 * i + 1, i);
+            unsafe { v.insert_nocheck(3 * i + 1, i) };
             v.entry(3 * i + 2).or_insert(i);
         }
     }
