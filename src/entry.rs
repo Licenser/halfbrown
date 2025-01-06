@@ -438,57 +438,57 @@ impl<'a, K, V, const N: usize, S> OccupiedEntry<'a, K, V, N, S> {
     /// # Examples
     ///
     /// ```
-    /// use hashbrown::hash_map::{Entry, HashMap};
+    /// use halfbrown::{Entry, HashMap};
     /// use std::rc::Rc;
     ///
-    /// let mut map: HashMap<Rc<String>, u32> = HashMap::new();
-    /// map.insert(Rc::new("Stringthing".to_string()), 15);
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    /// map.insert("poneyland", 42);
     ///
-    /// let my_key = Rc::new("Stringthing".to_string());
-    ///
-    /// if let Entry::Occupied(entry) = map.entry(my_key) {
-    ///     // Also replace the key with a handle to our other key.
-    ///     let (old_key, old_value): (Rc<String>, u32) = entry.replace_entry(16);
-    /// }
-    ///
-    /// ```
-    #[inline]
-    pub fn replace_entry(self, value: V) -> (K, V) {
-        match self.0 {
-            OccupiedEntryInt::Map(m) => m.replace_entry(value),
-            OccupiedEntryInt::Vec(m) => m.replace_entry(value),
-        }
-    }
-
-    /// Replaces the key in the hash map with the key used to create this entry.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::hash_map::{Entry, HashMap};
-    /// use std::rc::Rc;
-    ///
-    /// let mut map: HashMap<Rc<String>, u32> = HashMap::new();
-    /// let mut known_strings: Vec<Rc<String>> = Vec::new();
-    ///
-    /// // Initialise known strings, run program, etc.
-    ///
-    /// reclaim_memory(&mut map, &known_strings);
-    ///
-    /// fn reclaim_memory(map: &mut HashMap<Rc<String>, u32>, known_strings: &[Rc<String>] ) {
-    ///     for s in known_strings {
-    ///         if let Entry::Occupied(entry) = map.entry(s.clone()) {
-    ///             // Replaces the entry's key with our version of it in `known_strings`.
-    ///             entry.replace_key();
-    ///         }
+    /// let entry = match map.entry("poneyland") {
+    ///     Entry::Occupied(e) => {
+    ///         e.replace_entry_with(|k, v| {
+    ///             assert_eq!(k, &"poneyland");
+    ///             assert_eq!(v, 42);
+    ///             Some(v + 1)
+    ///         })
     ///     }
+    ///     Entry::Vacant(_) => panic!(),
+    /// };
+    ///
+    /// match entry {
+    ///     Entry::Occupied(e) => {
+    ///         assert_eq!(e.key(), &"poneyland");
+    ///         assert_eq!(e.get(), &43);
+    ///     }
+    ///     Entry::Vacant(_) => panic!(),
     /// }
+    ///
+    /// assert_eq!(map["poneyland"], 43);
+    ///
+    /// let entry = match map.entry("poneyland") {
+    ///     Entry::Occupied(e) => e.replace_entry_with(|_k, _v| None),
+    ///     Entry::Vacant(_) => panic!(),
+    /// };
+    ///
+    /// match entry {
+    ///     Entry::Vacant(e) => {
+    ///         assert_eq!(e.key(), &"poneyland");
+    ///     }
+    ///     Entry::Occupied(_) => panic!(),
+    /// }
+    ///
+    /// assert!(!map.contains_key("poneyland"));
+    ///
     /// ```
     #[inline]
-    pub fn replace_key(self) -> K {
+    pub fn replace_entry_with<F>(self, f: F) -> Entry<'a, K, V, N, S>
+    where
+        F: FnOnce(&K, V) -> Option<V>,
+        V: Clone,
+    {
         match self.0 {
-            OccupiedEntryInt::Map(m) => m.replace_key(),
-            OccupiedEntryInt::Vec(m) => m.replace_key(),
+            OccupiedEntryInt::Map(m) => m.replace_entry_with(f).into(),
+            OccupiedEntryInt::Vec(m) => m.replace_entry_with(f).into(),
         }
     }
 }

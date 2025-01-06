@@ -301,7 +301,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use hashbrown::HashMap;
+    /// use halfbrown::HashMap;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// let entry = map.raw_entry_mut().from_key("horseyland").insert("horseyland", 37);
@@ -339,7 +339,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use hashbrown::HashMap;
+    /// use halfbrown::HashMap;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
@@ -367,7 +367,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use hashbrown::HashMap;
+    /// use halfbrown::HashMap;
     ///
     /// let mut map: HashMap<&str, String> = HashMap::new();
     ///
@@ -399,7 +399,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use hashbrown::HashMap;
+    /// use halfbrown::HashMap;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
