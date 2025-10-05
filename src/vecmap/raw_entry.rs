@@ -114,7 +114,7 @@ impl<'a, K, V, const N: usize, S> RawEntryBuilderMut<'a, K, V, N, S> {
     where
         for<'b> F: FnMut(&'b K) -> bool,
     {
-        for (idx, (ref key, _v)) in self.map.v.iter().enumerate() {
+        for (idx, (key, _v)) in self.map.v.iter().enumerate() {
             if is_match(key) {
                 return RawEntryMut::Occupied(RawOccupiedEntryMut { idx, map: self.map });
             }
@@ -332,7 +332,7 @@ impl<'a, K, V, const N: usize, S> RawOccupiedEntryMut<'a, K, V, N, S> {
     #[inline]
     pub fn get_key_value(&mut self) -> (&K, &V) {
         unsafe {
-            let (ref key, ref value) = &self.map.v.get_unchecked(self.idx);
+            let (key, value) = &self.map.v.get_unchecked(self.idx);
             (key, value)
         }
     }

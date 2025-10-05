@@ -5,8 +5,8 @@ mod raw_entry;
 
 pub(crate) use self::entry::*;
 pub(crate) use self::raw_entry::*;
-use crate::vectypes::VecDrain;
 use crate::DefaultHashBuilder;
+use crate::vectypes::VecDrain;
 use std::borrow::Borrow;
 
 #[derive(Debug, Clone)]
@@ -43,7 +43,7 @@ where
         }
 
         self.iter()
-            .all(|(key, value)| other.get(key).map_or(false, |v| value == v.borrow()))
+            .all(|(key, value)| other.get(key).is_some_and(|v| value == v.borrow()))
     }
 }
 
@@ -83,7 +83,7 @@ impl<K, V, const N: usize, S> VecMap<K, V, N, S> {
 
     #[cfg(feature = "arraybackend")]
     #[inline]
-    pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
+    pub fn with_capacity_and_hasher(_capacity: usize, hash_builder: S) -> Self {
         let v = arrayvec::ArrayVec::new();
         Self { v, hash_builder }
     }
@@ -132,7 +132,7 @@ impl<K, V, const N: usize, S> VecMap<K, V, N, S> {
     }
 
     #[inline]
-    pub(crate) fn drain(&mut self) -> VecDrain<(K, V), N> {
+    pub(crate) fn drain(&'_ mut self) -> VecDrain<'_, (K, V), N> {
         self.v.drain(..)
     }
 
@@ -214,7 +214,7 @@ impl<K, V, const N: usize, S> VecMap<K, V, N, S> {
         self.v.push((k, v));
     }
 
-    pub(crate) fn entry(&mut self, key: K) -> Entry<K, V, N, S>
+    pub(crate) fn entry(&'_ mut self, key: K) -> Entry<'_, K, V, N, S>
     where
         K: Eq,
     {
@@ -339,7 +339,7 @@ impl<K, V, const N: usize, S> VecMap<K, V, N, S> {
     /// inserts a non existing element and returns it's position
     #[inline]
     unsafe fn get_mut_idx(&mut self, idx: usize) -> (&mut K, &mut V) {
-        let r = self.v.get_unchecked_mut(idx);
+        let r = unsafe { self.v.get_unchecked_mut(idx) };
         (&mut r.0, &mut r.1)
     }
     #[cfg(feature = "arraybackend")]

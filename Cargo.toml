@@ -1,7 +1,7 @@
 [package]
 authors = ["Heinz N. Gies <heinz@licenser.net>"]
 description = "Multi backend HashMap for higher performance on different key space sizes"
-edition = "2018"
+edition = "2024"
 license = "Apache-2.0/MIT"
 name = "halfbrown"
 repository = "https://github.com/Licenser/halfbrown"
