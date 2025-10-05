@@ -17,7 +17,6 @@
 //! Note: Most of the documentation is taken from
 //! rusts hashmap.rs and should be considered under
 //! their copyright.
-
 #![warn(unused_extern_crates)]
 #![deny(
     clippy::all,
@@ -26,7 +25,7 @@
     clippy::pedantic
 )]
 // We might want to revisit inline_always
-#![allow(clippy::module_name_repetitions, clippy::inline_always)]
+#![allow(clippy::module_name_repetitions)]
 #![deny(missing_docs)]
 
 mod entry;
@@ -436,7 +435,7 @@ impl<K, V, S, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, S, VEC_LIMIT_UPPE
     /// assert!(a.is_empty());
     /// ```
     #[inline]
-    pub fn drain(&mut self) -> Drain<K, V, VEC_LIMIT_UPPER> {
+    pub fn drain(&'_ mut self) -> Drain<'_, K, V, VEC_LIMIT_UPPER> {
         match &mut self.0 {
             HashMapInt::Map(m) => Drain(DrainInt::Map(m.drain())),
             HashMapInt::Vec(m) => Drain(DrainInt::Vec(m.drain())),
@@ -562,14 +561,14 @@ where
     /// assert_eq!(letters[&'u'], 1);
     /// assert_eq!(letters.get(&'y'), None);
     /// ```
-    pub fn entry(&mut self, key: K) -> Entry<K, V, VEC_LIMIT_UPPER, S>
+    pub fn entry(&'_ mut self, key: K) -> Entry<'_, K, V, VEC_LIMIT_UPPER, S>
     where
         S: Default,
     {
-        if let HashMapInt::Vec(m) = &self.0 {
-            if m.len() >= VEC_LIMIT_UPPER {
-                self.swap_backend_to_map();
-            }
+        if let HashMapInt::Vec(m) = &self.0
+            && m.len() >= VEC_LIMIT_UPPER
+        {
+            self.swap_backend_to_map();
         }
         match &mut self.0 {
             HashMapInt::Map(m) => m.entry(key).into(),
@@ -838,12 +837,12 @@ where
     {
         match &mut self.0 {
             HashMapInt::Map(m) => {
-                m.insert_unique_unchecked(k, v);
+                unsafe { m.insert_unique_unchecked(k, v) };
             }
             HashMapInt::Vec(m) => {
                 if m.len() >= VEC_LIMIT_UPPER {
                     let map = self.swap_backend_to_map();
-                    map.insert_unique_unchecked(k, v);
+                    unsafe { map.insert_unique_unchecked(k, v) };
                 } else {
                     m.insert_nocheck(k, v);
                 }
@@ -930,10 +929,10 @@ where
     where
         S: Default,
     {
-        if let HashMapInt::Vec(m) = &self.0 {
-            if m.len() >= VEC_LIMIT_UPPER {
-                self.swap_backend_to_map();
-            }
+        if let HashMapInt::Vec(m) = &self.0
+            && m.len() >= VEC_LIMIT_UPPER
+        {
+            self.swap_backend_to_map();
         }
         match &mut self.0 {
             HashMapInt::Vec(m) => RawEntryBuilderMut::from(m.raw_entry_mut()),
@@ -978,7 +977,7 @@ where
         }
 
         self.iter()
-            .all(|(key, value)| other.get(key).map_or(false, |v| *value == *v))
+            .all(|(key, value)| other.get(key).is_some_and(|v| *value == *v))
     }
 }
 
