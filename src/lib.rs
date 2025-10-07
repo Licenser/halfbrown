@@ -1145,4 +1145,18 @@ mod tests {
         assert_eq!(v.get(&2), None);
         assert_eq!(v.get(&3), Some(&3));
     }
+
+    #[cfg(feature = "indexmap")]
+    #[test]
+    fn test_insertion_order_preserved() {
+        let mut map = SizedHashMap::<i32, i32, _, 32>::new();
+        for i in 0..33 {
+            map.insert(i, i * 10);
+        }
+        // Map should have switched to hashmap backend at 33 elements
+        assert!(map.is_map());
+        let iterated_keys: Vec<i32> = map.iter().map(|(k, _)| *k).collect();
+        let expected_keys: Vec<i32> = (0..33).collect();
+        assert_eq!(iterated_keys, expected_keys);
+    }
 }
