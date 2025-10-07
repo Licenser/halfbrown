@@ -346,6 +346,7 @@ impl<K, V, const N: usize, S> VecMap<K, V, N, S> {
         (&mut r.0, &mut r.1)
     }
     #[cfg(feature = "arraybackend")]
+    #[cfg(not(feature = "indexmap"))]
     #[inline]
     fn make_empty_vec_backend() -> arrayvec::ArrayVec<(K, V), N> {
         arrayvec::ArrayVec::new()
