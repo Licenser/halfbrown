@@ -22,7 +22,10 @@ impl<'a, K, V> From<IterInt<'a, K, V>> for Iter<'a, K, V> {
 
 #[derive(Debug)]
 pub(crate) enum IterInt<'a, K, V> {
+    #[cfg(not(feature = "indexmap"))]
     Map(hashbrown::hash_map::Iter<'a, K, V>),
+    #[cfg(feature = "indexmap")]
+    Map(indexmap::map::Iter<'a, K, V>),
     Vec(std::slice::Iter<'a, (K, V)>),
 }
 
@@ -76,7 +79,10 @@ impl<K, V> FusedIterator for Iter<'_, K, V> {}
 pub struct IntoIter<K, V, const N: usize>(IntoIterInt<K, V, N>);
 
 enum IntoIterInt<K, V, const N: usize> {
+    #[cfg(not(feature = "indexmap"))]
     Map(hashbrown::hash_map::IntoIter<K, V>),
+    #[cfg(feature = "indexmap")]
+    Map(indexmap::map::IntoIter<K, V>),
     Vec(VecIntoIter<(K, V), N>),
 }
 
@@ -89,7 +95,7 @@ impl<K, V, const N: usize> IntoIter<K, V, N> {
             IntoIterInt::Vec(i) => i.len(),
         }
     }
-    /// If this iteratoris empty
+    /// If this iterator is empty
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
@@ -185,7 +191,10 @@ impl<'a, K, V> From<IterMutInt<'a, K, V>> for IterMut<'a, K, V> {
 }
 
 pub(crate) enum IterMutInt<'a, K, V> {
+    #[cfg(not(feature = "indexmap"))]
     Map(hashbrown::hash_map::IterMut<'a, K, V>),
+    #[cfg(feature = "indexmap")]
+    Map(indexmap::map::IterMut<'a, K, V>),
     Vec(std::slice::IterMut<'a, (K, V)>),
 }
 

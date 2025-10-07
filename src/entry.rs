@@ -4,6 +4,7 @@
 
 use crate::vecmap::{self, Entry as VecMapEntry};
 use core::hash::{BuildHasher, Hash};
+#[cfg(not(feature = "indexmap"))]
 use hashbrown::{
     self,
     hash_map::{self, Entry as HashBrownEntry},
@@ -163,11 +164,22 @@ impl<'a, K, V: Default, const N: usize, S> Entry<'a, K, V, N, S> {
         }
     }
 }
+#[cfg(not(feature = "indexmap"))]
 impl<'a, K, V, const N: usize, S> From<HashBrownEntry<'a, K, V, S>> for Entry<'a, K, V, N, S> {
     fn from(f: HashBrownEntry<'a, K, V, S>) -> Entry<'a, K, V, N, S> {
         match f {
             HashBrownEntry::Occupied(o) => Entry::Occupied(OccupiedEntry(OccupiedEntryInt::Map(o))),
             HashBrownEntry::Vacant(o) => Entry::Vacant(VacantEntry(VacantEntryInt::Map(o))),
+        }
+    }
+}
+
+#[cfg(feature = "indexmap")]
+impl<'a, K, V, const N: usize, S> From<indexmap::map::Entry<'a, K, V>> for Entry<'a, K, V, N, S> {
+    fn from(f: indexmap::map::Entry<'a, K, V>) -> Entry<'a, K, V, N, S> {
+        match f {
+            indexmap::map::Entry::Occupied(o) => Entry::Occupied(OccupiedEntry(OccupiedEntryInt::Map(o))),
+            indexmap::map::Entry::Vacant(o) => Entry::Vacant(VacantEntry(VacantEntryInt::Map(o))),
         }
     }
 }
@@ -197,7 +209,10 @@ impl<K: fmt::Debug, V: fmt::Debug, const N: usize, S> fmt::Debug for Entry<'_, K
 pub struct OccupiedEntry<'a, K, V, const N: usize, S>(OccupiedEntryInt<'a, K, V, S, N>);
 
 enum OccupiedEntryInt<'a, K, V, S, const N: usize> {
+    #[cfg(not(feature = "indexmap"))]
     Map(hash_map::OccupiedEntry<'a, K, V, S>),
+    #[cfg(feature = "indexmap")]
+    Map(indexmap::map::OccupiedEntry<'a, K, V>),
     Vec(vecmap::OccupiedEntry<'a, K, V, S, N>),
 }
 
@@ -233,7 +248,10 @@ pub struct VacantEntry<'a, K, V, const N: usize, S>(VacantEntryInt<'a, K, V, N, 
 
 enum VacantEntryInt<'a, K, V, const N: usize, S> {
     /// a map based implementation
+    #[cfg(not(feature = "indexmap"))]
     Map(hashbrown::hash_map::VacantEntry<'a, K, V, S>),
+    #[cfg(feature = "indexmap")]
+    Map(indexmap::map::VacantEntry<'a, K, V>),
     /// a vec based implementation
     Vec(vecmap::VacantEntry<'a, K, V, N, S>),
 }
@@ -288,7 +306,10 @@ impl<'a, K, V, const N: usize, S> OccupiedEntry<'a, K, V, N, S> {
     #[inline]
     pub fn remove_entry(self) -> (K, V) {
         match self.0 {
+            #[cfg(not(feature = "indexmap"))]
             OccupiedEntryInt::Map(m) => m.remove_entry(),
+            #[cfg(feature = "indexmap")]
+            OccupiedEntryInt::Map(m) => m.shift_remove_entry(),
             OccupiedEntryInt::Vec(m) => m.remove_entry(),
         }
     }
@@ -427,7 +448,10 @@ impl<'a, K, V, const N: usize, S> OccupiedEntry<'a, K, V, N, S> {
     #[inline]
     pub fn remove(self) -> V {
         match self.0 {
+            #[cfg(not(feature = "indexmap"))]
             OccupiedEntryInt::Map(m) => m.remove(),
+            #[cfg(feature = "indexmap")]
+            OccupiedEntryInt::Map(m) => m.shift_remove(),
             OccupiedEntryInt::Vec(m) => m.remove(),
         }
     }
@@ -480,6 +504,7 @@ impl<'a, K, V, const N: usize, S> OccupiedEntry<'a, K, V, N, S> {
     /// assert!(!map.contains_key("poneyland"));
     ///
     /// ```
+    #[cfg(not(feature = "indexmap"))]
     #[inline]
     pub fn replace_entry_with<F>(self, f: F) -> Entry<'a, K, V, N, S>
     where

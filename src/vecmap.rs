@@ -93,6 +93,7 @@ impl<K, V, const N: usize, S> VecMap<K, V, N, S> {
         Self { v, hash_builder }
     }
 
+    #[cfg(not(feature = "indexmap"))]
     #[inline]
     pub fn retain<F>(&mut self, mut f: F)
     where
@@ -298,6 +299,7 @@ impl<K, V, const N: usize, S> VecMap<K, V, N, S> {
     /// so that the map now contains keys which compare equal, search may start
     /// acting erratically, with two keys randomly masking each other. Implementations
     /// are free to assume this doesn't happen (within the limits of memory-safety).
+    #[cfg(not(feature = "indexmap"))]
     #[inline]
     pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<'_, K, V, N, S> {
         RawEntryBuilderMut { map: self }
@@ -318,6 +320,7 @@ impl<K, V, const N: usize, S> VecMap<K, V, N, S> {
     /// `get` should be preferred.
     ///
     /// Immutable raw entries have very limited use; you might instead want `raw_entry_mut`.
+    #[cfg(not(feature = "indexmap"))]
     #[inline]
     pub fn raw_entry(&self) -> RawEntryBuilder<'_, K, V, N, S> {
         RawEntryBuilder { map: self }
@@ -348,6 +351,7 @@ impl<K, V, const N: usize, S> VecMap<K, V, N, S> {
         arrayvec::ArrayVec::new()
     }
     #[cfg(not(feature = "arraybackend"))]
+    #[cfg(not(feature = "indexmap"))]
     #[inline]
     fn make_empty_vec_backend() -> Vec<(K, V)> {
         Vec::new()

@@ -43,7 +43,12 @@ pub use crate::raw_entry::*;
 use crate::vecmap::VecMap;
 use core::borrow::Borrow;
 use core::hash::{BuildHasher, Hash};
+#[cfg(not(feature = "indexmap"))]
 use hashbrown::{self, HashMap as HashBrown};
+#[cfg(feature = "indexmap")]
+use indexmap::IndexMap as HashBrown;
+#[cfg(feature = "indexmap")]
+use hashbrown;
 use std::default::Default;
 use std::fmt::{self, Debug};
 use std::ops::Index;
@@ -51,6 +56,11 @@ use std::ops::Index;
 #[cfg(feature = "fxhash")]
 /// Default hasher
 pub type DefaultHashBuilder = core::hash::BuildHasherDefault<rustc_hash::FxHasher>;
+
+#[cfg(not(feature = "indexmap"))]
+type BackendMap<K, V, S> = hashbrown::HashMap<K, V, S>;
+#[cfg(feature = "indexmap")]
+type BackendMap<K, V, S> = indexmap::IndexMap<K, V, S>;
 
 use crate::vectypes::VecDrain;
 #[cfg(not(feature = "fxhash"))]
@@ -437,7 +447,10 @@ impl<K, V, S, const VEC_LIMIT_UPPER: usize> SizedHashMap<K, V, S, VEC_LIMIT_UPPE
     #[inline]
     pub fn drain(&'_ mut self) -> Drain<'_, K, V, VEC_LIMIT_UPPER> {
         match &mut self.0 {
+            #[cfg(not(feature = "indexmap"))]
             HashMapInt::Map(m) => Drain(DrainInt::Map(m.drain())),
+            #[cfg(feature = "indexmap")]
+            HashMapInt::Map(m) => Drain(DrainInt::Map(m.drain(..))),
             HashMapInt::Vec(m) => Drain(DrainInt::Vec(m.drain())),
         }
     }
@@ -669,7 +682,7 @@ where
             HashMapInt::Vec(m) => m.get_mut(k),
         }
     }
-    fn swap_backend_to_map(&mut self) -> &mut hashbrown::HashMap<K, V, S>
+    fn swap_backend_to_map(&mut self) -> &mut BackendMap<K, V, S>
     where
         S: Default,
     {
@@ -760,6 +773,9 @@ where
         Q: Hash + Eq + ?Sized,
     {
         match &mut self.0 {
+            #[cfg(feature = "indexmap")]
+            HashMapInt::Map(m) => m.shift_remove(k),
+            #[cfg(not(feature = "indexmap"))]
             HashMapInt::Map(m) => m.remove(k),
             HashMapInt::Vec(m) => m.remove(k),
         }
@@ -792,6 +808,9 @@ where
         Q: Hash + Eq + ?Sized,
     {
         match &mut self.0 {
+            #[cfg(feature = "indexmap")]
+            HashMapInt::Map(m) => m.shift_remove_entry(k),
+            #[cfg(not(feature = "indexmap"))]
             HashMapInt::Map(m) => m.remove_entry(k),
             HashMapInt::Vec(m) => m.remove_entry(k),
         }
@@ -811,6 +830,7 @@ where
     /// map.retain(|&k, _| k % 2 == 0);
     /// assert_eq!(map.len(), 4);
     /// ```
+    #[cfg(not(feature = "indexmap"))]
     #[inline]
     pub fn retain<F>(&mut self, f: F)
     where
@@ -837,12 +857,18 @@ where
     {
         match &mut self.0 {
             HashMapInt::Map(m) => {
+                #[cfg(not(feature = "indexmap"))]
                 unsafe { m.insert_unique_unchecked(k, v) };
+                #[cfg(feature = "indexmap")]
+                { m.insert(k, v); }
             }
             HashMapInt::Vec(m) => {
                 if m.len() >= VEC_LIMIT_UPPER {
                     let map = self.swap_backend_to_map();
+                    #[cfg(not(feature = "indexmap"))]
                     unsafe { map.insert_unique_unchecked(k, v) };
+                    #[cfg(feature = "indexmap")]
+                    { map.insert(k, v); }
                 } else {
                     m.insert_nocheck(k, v);
                 }
@@ -924,6 +950,7 @@ where
     /// so that the map now contains keys which compare equal, search may start
     /// acting erratically, with two keys randomly masking each other. Implementations
     /// are free to assume this doesn't happen (within the limits of memory-safety).
+    #[cfg(not(feature = "indexmap"))]
     #[inline]
     pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<'_, K, V, VEC_LIMIT_UPPER, S>
     where
@@ -955,6 +982,7 @@ where
     /// `get` should be preferred.
     ///
     /// Immutable raw entries have very limited use; you might instead want `raw_entry_mut`.
+    #[cfg(not(feature = "indexmap"))]
     #[inline]
     pub fn raw_entry(&self) -> RawEntryBuilder<'_, K, V, VEC_LIMIT_UPPER, S> {
         match &self.0 {
@@ -1050,7 +1078,10 @@ impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
 pub struct Drain<'a, K, V, const N: usize>(DrainInt<'a, K, V, N>);
 
 enum DrainInt<'a, K, V, const N: usize> {
+    #[cfg(not(feature = "indexmap"))]
     Map(hashbrown::hash_map::Drain<'a, K, V>),
+    #[cfg(feature = "indexmap")]
+    Map(indexmap::map::Drain<'a, K, V>),
     Vec(VecDrain<'a, (K, V), N>),
 }
 
